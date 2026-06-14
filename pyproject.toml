@@ -1,0 +1,10 @@
+[project]
+name = "sentinel-simulation-engine"
+version = "0.1.0"
+description = "Standalone market replay and Edge/Pulse contract simulation engine."
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
