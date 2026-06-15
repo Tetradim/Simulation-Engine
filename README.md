@@ -4,6 +4,28 @@ Standalone recorded-market replay and Edge/Pulse contract simulator for the Sent
 
 The engine can run by itself, stand in for Pulse, stand in for Edge, or serve both contracts at once. Tandem Suite can point both bot URLs at this service and show changing trade state without connecting to a broker.
 
+## Current Feature Map
+
+| Area | Current capability |
+|------|--------------------|
+| Recorded replay | Imports OHLCV CSV bars, groups rows by timestamp, and advances replay in deterministic timestamp batches. |
+| Market state | Maintains current replay prices per symbol and exposes quote/price endpoints for Edge/Pulse-style clients. |
+| Simulated account | Tracks cash, equity, buying power, open positions, average entry, current price, P&L dollars, P&L percent, trailing state, and day P&L. |
+| Execution realism | Configurable starting cash, default quantity, max allocation percent, fill ratio, slippage basis points, commission, confidence threshold, default trailing percent, regular stop percent, and take-profit percent. |
+| Handoff contract | Accepts `edge.pulse.handoff.v1` payloads at `/api/edge/handoff` and `/api/simulation/handoff`. |
+| Action coverage | Handles `buy`, `sell`, `regular_stop`, `trailing_stop`, `opening_trailing_stop`, `tighten_trailing_stop`, `stop_all`, `emergency_exit`, `dca`, and `stop_buying`. |
+| Risk exits | Evaluates regular stop, take profit, and trailing stop against replay bar high/low values on every replay step. |
+| Idempotency | Duplicate `idempotency_key` values return the original handoff result without applying side effects twice. |
+| Edge facade | Serves `/api/live`, `/api/ready`, `/api/automation`, `/api/decisions`, `/api/pulse/handoff/schema`, `/api/pulse/account`, and `/api/pulse/positions`. |
+| Pulse facade | Serves `/api/health`, `/api/edge/status`, `/api/edge/account/status`, `/api/edge/tickers`, `/api/edge/positions/{symbol}`, legacy decision/trailing endpoints, and lightweight signal scoring. |
+| Tandem support | Can be used as both `EDGE_API_URL` and `PULSE_API_URL` so Tandem shows a full pair dashboard without live brokers. |
+| Control panel | Ships a React/Vite UI served by FastAPI after build, with execution settings, replay import/playback, handoff composer, positions, and decision/event tape. |
+| Windows launcher | Starts the engine, opens a dedicated browser profile, and now supports Pulse-style "one closes the other" cleanup between browser and process. |
+
+## Safety Boundary
+
+The Simulation Engine is a paper/simulation-only process. It does not connect to brokers, does not place live orders, and does not persist account state across process restarts. It is meant for local replay, UI integration testing, Tandem demos, Edge/Pulse contract testing, and operator workflow validation before using real broker-connected services.
+
 ## Local Work Folder
 
 ```powershell
@@ -28,7 +50,17 @@ Windows launcher:
 .\Launch-Sentinel-Simulation-Engine.ps1
 ```
 
-The Windows launcher opens the control panel in a dedicated browser window with an isolated local profile.
+The Windows launcher opens the control panel in a dedicated browser window with an isolated local profile. Closing that browser window stops the Simulation Engine process started by the launcher. Closing the launcher window or pressing Ctrl+C closes the dedicated browser profile and stops the server. Use `-NoBrowser` when you intentionally want a headless run without browser-close monitoring.
+
+Useful launcher flags:
+
+| Flag | Purpose |
+|------|---------|
+| `-Port 9200` | Choose the FastAPI/control-panel port. |
+| `-NoBrowser` | Start the server without opening a browser or monitoring browser close. |
+| `-InstallDeps` | Install Python and frontend dependencies before launch. |
+| `-Rebuild` | Rebuild the React control panel before launch. |
+| `-SmokeTest` | Check launcher prerequisites without starting the engine. |
 
 ## How It Works
 
@@ -42,6 +74,23 @@ The engine keeps one in-memory simulation state:
 6. Edge-compatible and Pulse-compatible endpoints expose that same state to Tandem, Edge, or Pulse.
 
 Nothing is persisted yet. Restarting the process clears imported sessions, positions, idempotency keys, decisions, and logs.
+
+## Launcher Lifecycle
+
+`Launch-Sentinel-Simulation-Engine.ps1` is designed for single-window local operation:
+
+1. The launcher verifies Python and npm are available.
+2. It creates/uses `.venv`.
+3. It installs dependencies when requested or missing.
+4. It builds the control panel when requested or when `dist/index.html` is missing.
+5. It replaces an existing listener on the selected port.
+6. It starts uvicorn with `simulation_engine.main:app`.
+7. It waits for `/api/health` to identify the service as `sentinel-simulation-engine`.
+8. Unless `-NoBrowser` is set, it opens a dedicated Edge/Chrome app window with a temporary browser profile.
+9. It starts a hidden watchdog that closes the dedicated browser profile and stops the server if the launcher process disappears.
+10. The foreground loop stops the server if the dedicated browser window closes.
+
+This matches the Sentinel Pulse local-source launcher behavior and keeps stale local simulation tasks from continuing after the operator UI has been closed.
 
 ## Tandem Suite Integration
 
@@ -638,10 +687,11 @@ X-API-Key: local-sim-key
 .\.venv\Scripts\python.exe -m pytest
 npm run build
 .\Launch-Sentinel-Simulation-Engine.ps1 -SmokeTest
+python -m unittest tests.test_launcher_lifecycle_static -v
 ```
 
 Expected current backend test result:
 
 ```text
-8 passed
+10 passed
 ```
