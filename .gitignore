@@ -4,6 +4,7 @@ __pycache__/
 node_modules/
 dist/
 frontend/dist/
+data/
 .env
 .env.local
 *.log
