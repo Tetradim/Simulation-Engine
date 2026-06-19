@@ -15,7 +15,10 @@ from pydantic import BaseModel, Field
 from .contracts import pulse_handoff_contract_document
 from .core import SimulationEngine
 from .csv_import import parse_ohlcv_csv
+from .discord_recorder import DiscordRecorder
 from .models import SimulationConfig
+from .recorder_api import create_recorder_router
+from .recording_store import RecordingStore
 
 DEFAULT_API_KEY = "local-sim-key"
 
@@ -39,8 +42,14 @@ def require_api_key(x_api_key: str | None = Header(None), authorization: str | N
     return True
 
 
-def create_app(engine: SimulationEngine | None = None) -> FastAPI:
+def create_app(
+    engine: SimulationEngine | None = None,
+    recorder_db_path: str | Path = "data/simulation_engine.sqlite3",
+    recorder_export_root: str | Path = "data/recordings",
+) -> FastAPI:
     engine_instance = engine or SimulationEngine()
+    recorder_store = RecordingStore(recorder_db_path)
+    discord_recorder = DiscordRecorder(recorder_store)
 
     async def playback_loop() -> None:
         while True:
@@ -53,10 +62,12 @@ def create_app(engine: SimulationEngine | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app_instance: FastAPI):
+        await recorder_store.initialize()
         app_instance.state.playback_task = asyncio.create_task(playback_loop())
         try:
             yield
         finally:
+            await discord_recorder.stop()
             task = app_instance.state.playback_task
             if task:
                 task.cancel()
@@ -67,6 +78,8 @@ def create_app(engine: SimulationEngine | None = None) -> FastAPI:
 
     app = FastAPI(title="Sentinel Simulation Engine", version="0.1.0", lifespan=lifespan)
     app.state.engine = engine_instance
+    app.state.recorder_store = recorder_store
+    app.state.discord_recorder = discord_recorder
     app.state.playback_task = None
     app.add_middleware(
         CORSMiddleware,
@@ -74,6 +87,7 @@ def create_app(engine: SimulationEngine | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.include_router(create_recorder_router(recorder_store, discord_recorder, export_root=recorder_export_root), prefix="/api")
 
     def current_engine() -> SimulationEngine:
         return app.state.engine
