@@ -4,6 +4,7 @@ __pycache__/
 node_modules/
 dist/
 frontend/dist/
+.worktrees/
 data/
 .env
 .env.local
