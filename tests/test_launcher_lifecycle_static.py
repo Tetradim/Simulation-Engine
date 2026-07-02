@@ -4,11 +4,11 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-LAUNCHER = ROOT / "Launch-Sentinel-Simulation-Engine.ps1"
+LAUNCHER = ROOT / "Launch-Sentinel-Archive.ps1"
 
 
 class LauncherLifecycleStaticTests(unittest.TestCase):
-    def test_browser_window_close_stops_simulation_engine(self):
+    def test_browser_window_close_stops_sentinel_archive(self):
         script = LAUNCHER.read_text(encoding="utf-8")
 
         self.assertIn("$BrowserProcessIds = @()", script)
@@ -20,7 +20,7 @@ class LauncherLifecycleStaticTests(unittest.TestCase):
         self.assertIn("Wait-BrowserProfileProcesses -Seconds 10", script)
         self.assertIn("Wait-BrowserWindowProcesses -Seconds 10", script)
         self.assertIn("if (Test-BrowserWindowClosed)", script)
-        self.assertIn("Browser window closed; shutting down Simulation Engine", script)
+        self.assertIn("Browser window closed; shutting down Sentinel Archive", script)
 
     def test_launcher_close_stops_dedicated_browser_and_server(self):
         script = LAUNCHER.read_text(encoding="utf-8")

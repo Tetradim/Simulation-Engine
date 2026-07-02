@@ -1,14 +1,14 @@
 import asyncio
 
-from simulation_engine.alert_parser import parse_alert_text
-from simulation_engine.market_recorder import (
+from sentinel_archive.alert_parser import parse_alert_text
+from sentinel_archive.market_recorder import (
     calculate_price_drift,
     create_snapshot_for_alert,
     parse_option_csv,
     parse_stock_csv,
 )
-from simulation_engine.recorder_models import RecorderSettings
-from simulation_engine.recording_store import RecordingStore
+from sentinel_archive.recorder_models import RecorderSettings
+from sentinel_archive.recording_store import RecordingStore
 
 
 def test_parse_option_csv_normalizes_contract_key_and_prices():

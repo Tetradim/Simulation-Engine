@@ -1,10 +1,11 @@
 import csv
+import hashlib
 import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from simulation_engine.api import create_app
+from sentinel_archive.api import create_app
 
 
 def test_recorder_settings_masks_token(tmp_path):
@@ -163,8 +164,17 @@ def test_replay_events_endpoint_returns_chronological_truth_stream(tmp_path):
             },
         )
 
-        events = client.get("/api/replay/events").json()["events"]
+        payload = client.get("/api/replay/events").json()
+        events = payload["events"]
 
+        assert payload["contract_version"] == "simulation.replay_session.v1"
+        assert payload["mode"] == "simulation"
+        assert payload["execution"] == "none"
+        assert payload["replay_session"]["contract_version"] == "replay_session.v1"
+        assert payload["replay_session"]["source_day"] == "2026-06-19"
+        assert payload["replay_session"]["event_count"] == 2
+        assert payload["replay_session"]["event_types"] == ["discord_alert", "market_snapshot"]
+        assert payload["replay_session"]["consumer_notes"] == "read-only replay data; never a live execution signal"
         assert [event["type"] for event in events] == ["discord_alert", "market_snapshot"]
         assert events[0]["timestamp"] <= events[1]["timestamp"]
 
@@ -184,7 +194,7 @@ def test_recording_session_start_stop_tags_ingested_messages(tmp_path):
             },
         )
 
-        start = client.post("/api/recordings/sessions/start", json={"notes": "Consolidation smoke capture"})
+        start = client.post("/api/recordings/sessions/start", json={"notes": "Sentinel Echo smoke capture"})
 
         assert start.status_code == 200
         session_id = start.json()["session"]["session_id"]
@@ -261,14 +271,17 @@ def test_joined_export_filters_multiple_channels(tmp_path):
         assert payload["filters"]["channel_ids"] == ["111", "222"]
 
 
-def test_consolidation_replay_endpoint_returns_joined_alert_events(tmp_path):
+def test_sentinel_echo_replay_endpoint_returns_joined_alert_events(tmp_path):
     app = create_app(recorder_db_path=tmp_path / "recorder.sqlite3")
     with TestClient(app) as client:
         _seed_spy_option_alert_with_market_drift(client)
 
-        payload = client.get("/api/consolidation/replay/events?limit=10&channel_id=123").json()
+        payload = client.get("/api/sentinel-echo/replay/events?limit=10&channel_id=123").json()
 
-        assert payload["contract_version"] == "simulation.consolidation.replay.v1"
+        assert payload["contract_version"] == "simulation.sentinel-echo.replay.v1"
+        assert payload["mode"] == "simulation"
+        assert payload["execution"] == "none"
+        assert payload["consumer_notes"] == "read-only replay data; never a live execution signal"
         assert payload["event_count"] == 1
         event = payload["events"][0]
         assert event["event_id"] == "discord_alert:m-drift"
@@ -277,34 +290,41 @@ def test_consolidation_replay_endpoint_returns_joined_alert_events(tmp_path):
         assert event["payload"]["alert"]["ticker"] == "SPY"
         assert event["payload"]["market_snapshot"]["selected_market_price"] == 1.05
         assert event["payload"]["price_drift"]["price_drift_alert"] is True
+        expected_hash = hashlib.sha256(
+            "".join(json.dumps(event, separators=(",", ":"), ensure_ascii=False) + "\n" for event in payload["events"]).encode("utf-8")
+        ).hexdigest()
+        assert payload["manifest_hash_algorithm"] == "sha256"
+        assert payload["manifest_sha256"] == expected_hash
 
 
-def test_consolidation_replay_endpoint_filters_multiple_channel_ids(tmp_path):
+def test_sentinel_echo_replay_endpoint_filters_multiple_channel_ids(tmp_path):
     app = create_app(recorder_db_path=tmp_path / "recorder.sqlite3")
     with TestClient(app) as client:
         _seed_multi_channel_alerts(client)
 
-        payload = client.get("/api/consolidation/replay/events?limit=10&channel_ids=111,222").json()
+        payload = client.get("/api/sentinel-echo/replay/events?limit=10&channel_ids=111,222").json()
 
         assert payload["event_count"] == 2
         assert {event["channel_id"] for event in payload["events"]} == {"111", "222"}
         assert payload["filters"]["channel_ids"] == ["111", "222"]
 
 
-def test_consolidation_test_run_writes_replay_manifest_without_executing(tmp_path):
+def test_sentinel_echo_test_run_writes_replay_manifest_without_executing(tmp_path):
     export_root = tmp_path / "recordings"
     app = create_app(recorder_db_path=tmp_path / "recorder.sqlite3", recorder_export_root=export_root)
     with TestClient(app) as client:
         _seed_spy_option_alert_with_market_drift(client)
 
         response = client.post(
-            "/api/consolidation/test-runs",
-            json={"name": "Consolidation smoke", "channel_id": "123", "limit": 10},
+            "/api/sentinel-echo/test-runs",
+            json={"name": "Sentinel Echo smoke", "channel_id": "123", "limit": 10},
         )
 
         assert response.status_code == 200
         payload = response.json()
-        assert payload["contract_version"] == "simulation.consolidation.test_run.v1"
+        assert payload["contract_version"] == "simulation.sentinel-echo.test_run.v1"
+        assert payload["mode"] == "simulation"
+        assert payload["execution"] == "none"
         assert payload["execution_mode"] == "recorded_replay_only"
         assert payload["event_count"] == 1
         path = Path(payload["file_path"])
@@ -312,16 +332,19 @@ def test_consolidation_test_run_writes_replay_manifest_without_executing(tmp_pat
         with path.open(encoding="utf-8") as handle:
             lines = [json.loads(line) for line in handle if line.strip()]
         assert lines[0]["event_id"] == "discord_alert:m-drift"
+        assert payload["manifest_hash_algorithm"] == "sha256"
+        assert payload["manifest_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+        assert len(payload["manifest_sha256"]) == 64
 
 
-def test_consolidation_test_run_filters_multiple_channels(tmp_path):
+def test_sentinel_echo_test_run_filters_multiple_channels(tmp_path):
     export_root = tmp_path / "recordings"
     app = create_app(recorder_db_path=tmp_path / "recorder.sqlite3", recorder_export_root=export_root)
     with TestClient(app) as client:
         _seed_multi_channel_alerts(client)
 
         response = client.post(
-            "/api/consolidation/test-runs",
+            "/api/sentinel-echo/test-runs",
             json={"name": "Multi-channel replay", "channel_ids": ["111", "222"], "limit": 10},
         )
 

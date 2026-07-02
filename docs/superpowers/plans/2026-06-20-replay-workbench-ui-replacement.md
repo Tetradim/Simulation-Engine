@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the current basic Sentinel Simulation Engine React control panel with the approved chart-first Replay Workbench while preserving the existing FastAPI API and launcher behavior.
+**Goal:** Replace the current basic Sentinel Archive React control panel with the approved chart-first Replay Workbench while preserving the existing FastAPI API and launcher behavior.
 
 **Architecture:** Keep the backend contract stable and rebuild the frontend as focused React modules under `frontend/src/replayWorkbench/`. Pure derivation logic is tested with Vitest, the custom replay chart is built from SVG/HTML with no new chart dependency, and the existing API client remains the single boundary to FastAPI.
 
-**Tech Stack:** React 19, Vite 8, TypeScript 6, lucide-react, FastAPI endpoints already exposed by `simulation_engine/api.py` and `simulation_engine/recorder_api.py`, Vitest for frontend utility tests, Playwright for browser verification.
+**Tech Stack:** React 19, Vite 8, TypeScript 6, lucide-react, FastAPI endpoints already exposed by `sentinel_archive/api.py` and `sentinel_archive/recorder_api.py`, Vitest for frontend utility tests, Playwright for browser verification.
 
 ---
 
@@ -30,8 +30,8 @@
 - Create `frontend/src/replayWorkbench/BotLanes.tsx`: compact bot contract lane cards.
 - Create `frontend/src/replayWorkbench/EventTape.tsx`: synchronized replay and recorder event list.
 - Create `frontend/src/replayWorkbench/ResultsWorkspace.tsx`: equity, drawdown, positions, orders/fills-style summaries, and report panels derived from current data.
-- Create `frontend/src/replayWorkbench/RecorderWorkspace.tsx`: Discord recorder, parser preview, imports, drift, exports, and Consolidation replay controls.
-- Create `frontend/src/replayWorkbench/BotContractsWorkspace.tsx`: expanded Pulse, Edge, Consolidation, Auto-Crypto, and Darkpool-Mon contract review panels.
+- Create `frontend/src/replayWorkbench/RecorderWorkspace.tsx`: Discord recorder, parser preview, imports, drift, exports, and Sentinel Echo replay controls.
+- Create `frontend/src/replayWorkbench/BotContractsWorkspace.tsx`: expanded Pulse, Edge, Sentinel Echo, Sentinel-Chain, and Sentinel-Flare contract review panels.
 - Create `frontend/src/replayWorkbench/SettingsWorkspace.tsx`: execution model and fill model controls.
 - Create `work/verify_replay_workbench.py`: Playwright smoke verification for the built UI.
 
@@ -53,9 +53,9 @@ Modify `package.json` so the scripts and dev dependencies include these entries:
 ```json
 {
   "scripts": {
-    "dev": "concurrently -k -n api,ui \".venv\\\\Scripts\\\\python.exe -m uvicorn simulation_engine.main:app --host 127.0.0.1 --port 9200 --reload\" \"vite --config frontend/vite.config.ts --host 127.0.0.1 --port 9201\"",
+    "dev": "concurrently -k -n api,ui \".venv\\\\Scripts\\\\python.exe -m uvicorn sentinel_archive.main:app --host 127.0.0.1 --port 9200 --reload\" \"vite --config frontend/vite.config.ts --host 127.0.0.1 --port 9201\"",
     "build": "vite build --config frontend/vite.config.ts",
-    "preview": ".venv\\\\Scripts\\\\python.exe -m uvicorn simulation_engine.main:app --host 127.0.0.1 --port 9200",
+    "preview": ".venv\\\\Scripts\\\\python.exe -m uvicorn sentinel_archive.main:app --host 127.0.0.1 --port 9200",
     "test:ui": "vitest run --config frontend/vite.config.ts"
   },
   "devDependencies": {
@@ -96,7 +96,7 @@ export type FillConfidence = {
 };
 
 export type BotLane = {
-  id: 'pulse' | 'edge' | 'consolidation' | 'crypto' | 'darkpool';
+  id: 'pulse' | 'edge' | 'sentinel-echo' | 'crypto' | 'darkpool';
   title: string;
   status: string;
   detail: string;
@@ -211,7 +211,7 @@ describe('replayDerived', () => {
 
   it('builds five bot lanes with degraded Darkpool status by default', () => {
     const lanes = buildBotLanes(snapshot, [], []);
-    expect(lanes.map((lane) => lane.id)).toEqual(['pulse', 'edge', 'consolidation', 'crypto', 'darkpool']);
+    expect(lanes.map((lane) => lane.id)).toEqual(['pulse', 'edge', 'sentinel-echo', 'crypto', 'darkpool']);
     expect(lanes.find((lane) => lane.id === 'darkpool')?.tone).toBe('warn');
   });
 
@@ -297,22 +297,22 @@ export function buildBotLanes(snapshot: SimulationSnapshot | null, alerts: Parse
       tone: decisions ? 'good' : 'neutral',
     },
     {
-      id: 'consolidation',
-      title: 'Consolidation',
+      id: 'sentinel-echo',
+      title: 'Sentinel Echo',
       status: parsedAlerts ? 'Replay events ready' : 'No parsed alerts',
       detail: `${parsedAlerts} parsed Discord alert${parsedAlerts === 1 ? '' : 's'}`,
       tone: parsedAlerts ? 'good' : 'neutral',
     },
     {
       id: 'crypto',
-      title: 'Auto-Crypto',
+      title: 'Sentinel-Chain',
       status: active ? 'Paper path available' : 'Awaiting price path',
       detail: 'Uses replay prices for bracket-lot stop and target review.',
       tone: active ? 'good' : 'neutral',
     },
     {
       id: 'darkpool',
-      title: 'Darkpool-Mon',
+      title: 'Sentinel-Flare',
       status: driftAlerts ? 'Manual review flagged' : 'Manual review lane',
       detail: driftAlerts ? `${driftAlerts} drift event${driftAlerts === 1 ? '' : 's'} need review` : 'Intent packets stay review-only.',
       tone: 'warn',
@@ -600,8 +600,8 @@ Use these prop shapes in the new components:
 ```ts
 import type { ReactNode } from 'react';
 import type {
-  ConsolidationReplayResponse,
-  ConsolidationTestRun,
+  SentinelEchoReplayResponse,
+  SentinelEchoTestRun,
   ParsedAlert,
   PriceDriftEvent,
   RecorderSettings,
@@ -793,7 +793,7 @@ Move the existing recorder workflows into this component:
 - Parser preview.
 - Discord CSV, option CSV, and stock CSV imports.
 - Export controls.
-- Consolidation replay preview and test-run creation.
+- Sentinel Echo replay preview and test-run creation.
 - Recorded alerts and drift events tables.
 
 Keep all existing API calls from `api.ts`; do not introduce broker-capable calls.
@@ -804,9 +804,9 @@ Render five contract sections:
 
 - Pulse: positions, current simulated account state, and latest handoff event.
 - Edge: decisions, confidence, cooldown/readiness language, and handoff composer state.
-- Consolidation: parsed alert count, drift warnings, replay URL, and test-run file path when present.
-- Auto-Crypto: paper-only explanation with current symbol and replay state.
-- Darkpool-Mon: manual-review explanation and withheld-intent language.
+- Sentinel Echo: parsed alert count, drift warnings, replay URL, and test-run file path when present.
+- Sentinel-Chain: paper-only explanation with current symbol and replay state.
+- Sentinel-Flare: manual-review explanation and withheld-intent language.
 
 - [ ] **Step 4: Implement `SettingsWorkspace.tsx`**
 
@@ -1027,7 +1027,7 @@ with sync_playwright() as p:
     page.goto(URL)
     page.wait_for_load_state("networkidle")
 
-    expect(page.get_by_text("Simulation Engine")).to_be_visible()
+    expect(page.get_by_text("Sentinel Archive")).to_be_visible()
     expect(page.get_by_text("Replay")).to_be_visible()
     expect(page.get_by_text("Bot Lanes")).to_be_visible()
     expect(page.get_by_text("Fill")).to_be_visible()
@@ -1040,7 +1040,7 @@ with sync_playwright() as p:
 
     page.set_viewport_size({"width": 390, "height": 900})
     page.get_by_text("Replay").click()
-    expect(page.get_by_text("Simulation Engine")).to_be_visible()
+    expect(page.get_by_text("Sentinel Archive")).to_be_visible()
     expect(page.get_by_text("Replay Sessions")).to_be_visible()
 
     browser.close()
@@ -1048,7 +1048,7 @@ with sync_playwright() as p:
 
 - [ ] **Step 2: Start dev server**
 
-Run in the Simulation Engine repo:
+Run in the Sentinel Archive repo:
 
 ```powershell
 npm run dev
@@ -1175,4 +1175,4 @@ Execution notes:
 
 - The repo has existing unrelated modified files. Every commit command in this plan stages explicit files only.
 - Do not use `git reset`, `git checkout --`, or broad `git add .`.
-- Keep all broker-affecting behavior out of the Simulation Engine UI. This replacement remains paper/replay only.
+- Keep all broker-affecting behavior out of the Sentinel Archive UI. This replacement remains paper/replay only.

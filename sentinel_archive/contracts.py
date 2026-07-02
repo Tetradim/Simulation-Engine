@@ -38,5 +38,6 @@ def pulse_handoff_contract_document() -> dict[str, Any]:
             "global_symbol": "GLOBAL targets portfolio-wide actions such as stop_all and emergency_exit.",
             "trailing_percent": "Percent below high-water mark for trailing_stop and tighten_trailing_stop actions.",
             "idempotency_key": "Duplicate keys return the original handoff id and do not apply side effects twice.",
+            "live_mode": "Sentinel Archive rejects live handoffs; live mode is documented only so consumers know it is unsupported here.",
         },
     }

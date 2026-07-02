@@ -1,4 +1,4 @@
-# Sentinel Simulation Engine Launcher
+# Sentinel Archive Launcher
 
 param(
     [int]$Port = 9200,
@@ -14,7 +14,7 @@ $ProjectRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $M
 if (-not $ProjectRoot) { $ProjectRoot = (Get-Location).Path }
 $DesktopPath = [Environment]::GetFolderPath("Desktop")
 if (-not $DesktopPath) { $DesktopPath = Join-Path $HOME "Desktop" }
-$LogFile = Join-Path $DesktopPath "Sentinel-Simulation-Engine.log"
+$LogFile = Join-Path $DesktopPath "Sentinel-Archive.log"
 $ServerProcess = $null
 $WatchdogProcess = $null
 $WatchdogStopFile = $null
@@ -27,7 +27,7 @@ $BrowserStartedAt = $null
 $BrowserMonitorDisabled = $false
 $VcRedistUrl = "https://aka.ms/vc14/vc_redist.x64.exe"
 $DependencyRoot = if ($env:LOCALAPPDATA) {
-    Join-Path $env:LOCALAPPDATA "Sentinel Simulation Engine\dependencies"
+    Join-Path $env:LOCALAPPDATA "Sentinel Archive\dependencies"
 } else {
     Join-Path $ProjectRoot ".dependencies"
 }
@@ -81,7 +81,7 @@ function Start-DedicatedBrowserWindow {
     $browserExe = Find-BrowserExecutable
     if ($browserExe) {
         Write-Status "Opening dedicated browser window"
-        $script:BrowserProfileDir = Join-Path ([System.IO.Path]::GetTempPath()) "SentinelSimulationEngine-Browser-$PID"
+        $script:BrowserProfileDir = Join-Path ([System.IO.Path]::GetTempPath()) "SentinelSentinelArchive-Browser-$PID"
         $script:BrowserStartedAt = Get-Date
         New-Item -ItemType Directory -Path $script:BrowserProfileDir -Force | Out-Null
         $browserArgs = Join-ProcessArguments -Arguments @(
@@ -196,13 +196,13 @@ function Test-BrowserWindowClosed {
     return $false
 }
 
-function Wait-SimulationEngine {
+function Wait-SentinelArchive {
     param([int]$Port, [int]$Seconds = 45)
     $deadline = (Get-Date).AddSeconds($Seconds)
     while ((Get-Date) -lt $deadline) {
         try {
             $health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/health" -Method Get -TimeoutSec 3
-            if ($health.service -eq "sentinel-simulation-engine") { return $true }
+            if ($health.service -eq "sentinel-archive") { return $true }
         } catch {
         }
         Start-Sleep -Milliseconds 500
@@ -259,7 +259,7 @@ function Ensure-InstalledRuntimeDependencies {
     Invoke-DependencyDownload -Url $VcRedistUrl -OutFile $installer -Label "Microsoft Visual C++ Runtime" | Out-Null
     $process = Start-Process -FilePath $installer -ArgumentList "/install", "/quiet", "/norestart" -Wait -PassThru
     if (-not (@(0, 3010, 1638) -contains $process.ExitCode)) {
-        Write-Status "Microsoft Visual C++ Runtime installer exited with code $($process.ExitCode). Sentinel Simulation Engine will continue and report any startup error." "WARN"
+        Write-Status "Microsoft Visual C++ Runtime installer exited with code $($process.ExitCode). Sentinel Archive will continue and report any startup error." "WARN"
     }
 }
 
@@ -318,18 +318,18 @@ function Start-InstalledSimulationEngine {
     $env:PORT = "$PortToUse"
     New-Item -ItemType Directory -Path (Join-Path $ProjectRoot "data") -Force | Out-Null
 
-    Write-Status "Starting packaged SentinelSimulationEngine.exe on port $PortToUse"
+    Write-Status "Starting packaged SentinelArchive.exe on port $PortToUse"
     $script:ServerProcess = Start-Process -FilePath $InstalledExe -WorkingDirectory $ProjectRoot -PassThru -WindowStyle Hidden
     if (-not (Wait-SimulationEngine -Port $PortToUse)) {
-        throw "Simulation Engine did not become ready on port $PortToUse."
+        throw "Sentinel Archive did not become ready on port $PortToUse."
     }
-    Write-Status "Simulation Engine is ready" "OK"
+    Write-Status "Sentinel Archive is ready" "OK"
 }
 
 function Start-LauncherWatchdog {
     param([int]$ServerProcessId, [string]$BrowserProfileDir)
 
-    $watchdogName = "SentinelSimulationEngine-Watchdog-$PID"
+    $watchdogName = "SentinelSentinelArchive-Watchdog-$PID"
     $script:WatchdogStopFile = Join-Path ([System.IO.Path]::GetTempPath()) "$watchdogName.stop"
     $script:WatchdogScriptFile = Join-Path ([System.IO.Path]::GetTempPath()) "$watchdogName.ps1"
     if (Test-Path $script:WatchdogStopFile) {
@@ -487,22 +487,22 @@ if ($SmokeTest) {
 }
 
 function Start-SourceSimulationEngine {
-    Write-Status "Starting Sentinel Simulation Engine - Local Source"
+    Write-Status "Starting Sentinel Archive - Local Source"
 }
 
 try {
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "  Sentinel Simulation Engine" -ForegroundColor Cyan
+    Write-Host "  Sentinel Archive" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
     Write-Status "Project root: $ProjectRoot"
     Write-Status "Launcher log: $LogFile"
 
-    $installedExe = Join-Path $ProjectRoot "SentinelSimulationEngine.exe"
+    $installedExe = Join-Path $ProjectRoot "SentinelArchive.exe"
     $installedUi = Join-Path $ProjectRoot "dist\index.html"
     if ((Test-Path -LiteralPath $installedExe) -and (Test-Path -LiteralPath $installedUi)) {
-        Write-Host "  Sentinel Simulation Engine - Installed App" -ForegroundColor Cyan
+        Write-Host "  Sentinel Archive - Installed App" -ForegroundColor Cyan
         Start-InstalledSimulationEngine -InstalledExe $installedExe -PortToUse $Port
 
         $url = "http://127.0.0.1:$Port"
@@ -518,10 +518,10 @@ try {
 
         while ($true) {
             if ($ServerProcess.HasExited) {
-                throw "Simulation Engine exited unexpectedly with code $($ServerProcess.ExitCode)."
+                throw "Sentinel Archive exited unexpectedly with code $($ServerProcess.ExitCode)."
             }
             if (Test-BrowserWindowClosed) {
-                Write-Status "Browser window closed; shutting down Simulation Engine" "OK"
+                Write-Status "Browser window closed; shutting down Sentinel Archive" "OK"
                 break
             }
             Start-Sleep -Seconds 1
@@ -565,10 +565,10 @@ try {
         Start-Sleep -Seconds 1
     }
 
-    Write-Status "Starting Simulation Engine on port $Port"
-    $ServerProcess = Start-Process -FilePath $python -ArgumentList @("-m", "uvicorn", "simulation_engine.main:app", "--host", "127.0.0.1", "--port", "$Port") -WorkingDirectory $ProjectRoot -PassThru -WindowStyle Hidden
-    if (-not (Wait-SimulationEngine -Port $Port)) {
-        throw "Simulation Engine did not become ready on port $Port."
+    Write-Status "Starting Sentinel Archive on port $Port"
+    $ServerProcess = Start-Process -FilePath $python -ArgumentList @("-m", "uvicorn", "sentinel_archive.main:app", "--host", "127.0.0.1", "--port", "$Port") -WorkingDirectory $ProjectRoot -PassThru -WindowStyle Hidden
+    if (-not (Wait-SentinelArchive -Port $Port)) {
+        throw "Sentinel Archive did not become ready on port $Port."
     }
 
     $url = "http://127.0.0.1:$Port"
@@ -584,10 +584,10 @@ try {
 
     while ($true) {
         if ($ServerProcess.HasExited) {
-            throw "Simulation Engine exited unexpectedly with code $($ServerProcess.ExitCode)."
+            throw "Sentinel Archive exited unexpectedly with code $($ServerProcess.ExitCode)."
         }
         if (Test-BrowserWindowClosed) {
-            Write-Status "Browser window closed; shutting down Simulation Engine" "OK"
+            Write-Status "Browser window closed; shutting down Sentinel Archive" "OK"
             break
         }
         Start-Sleep -Seconds 1

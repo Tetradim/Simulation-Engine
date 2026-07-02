@@ -1,15 +1,26 @@
 from fastapi.testclient import TestClient
 
-from simulation_engine.api import create_app
+from sentinel_archive.api import create_app
 
 
 def test_edge_and_pulse_contract_endpoints_are_available():
     client = TestClient(create_app())
 
-    assert client.get("/api/live").json()["status"] == "live"
-    assert client.get("/api/ready").json()["ready"] is True
+    live = client.get("/api/live").json()
+    ready = client.get("/api/ready").json()
+    health = client.get("/api/health").json()
+
+    assert live["status"] == "live"
+    assert live["mode"] == "simulation"
+    assert live["execution"] == "none"
+    assert ready["ready"] is True
+    assert ready["mode"] == "simulation"
+    assert ready["execution"] == "none"
+    assert health["mode"] == "simulation"
+    assert health["execution"] == "none"
     assert client.get("/api/edge/status", headers={"X-API-Key": "local-sim-key"}).json()["api_key_configured"] is True
     assert client.get("/api/pulse/handoff/schema").json()["contract_version"] == "edge.pulse.handoff.v1"
+    assert client.get("/api/pulse/handoff/schema").json()["semantics"]["live_mode"] == "Sentinel Archive rejects live handoffs; live mode is documented only so consumers know it is unsupported here."
 
 
 def test_import_start_step_and_handoff_flow_through_http():
@@ -46,3 +57,34 @@ def test_import_start_step_and_handoff_flow_through_http():
     assert response.json()["accepted"] is True
     positions = client.get("/api/edge/account/status", headers={"X-API-Key": "local-sim-key"}).json()["positions"]
     assert positions[0]["symbol"] == "SPY"
+
+
+def test_pulse_bot_lifecycle_facade_requires_api_key_and_updates_sim_state():
+    client = TestClient(create_app())
+
+    unauthenticated = client.post("/api/bot/start", json={"enable_all": False})
+    assert unauthenticated.status_code == 401
+
+    started = client.post(
+        "/api/bot/start",
+        headers={"X-API-Key": "local-sim-key"},
+        json={"enable_all": False},
+    )
+
+    assert started.status_code == 200
+    assert started.json()["running"] is True
+    assert started.json()["paused"] is False
+    assert started.json()["mode"] == "simulation"
+    assert client.get("/api/health").json()["bot_running"] is True
+
+    stopped = client.post(
+        "/api/bot/stop",
+        headers={"X-API-Key": "local-sim-key"},
+        json={"disable_all": False},
+    )
+
+    assert stopped.status_code == 200
+    assert stopped.json()["running"] is False
+    assert stopped.json()["paused"] is False
+    assert stopped.json()["mode"] == "simulation"
+    assert client.get("/api/health").json()["bot_running"] is False

@@ -20,8 +20,8 @@ import {
 } from 'lucide-react';
 import {
   api,
-  type ConsolidationReplayResponse,
-  type ConsolidationTestRun,
+  type SentinelEchoReplayResponse,
+  type SentinelEchoTestRun,
   type DiscordTestResult,
   type ExportRecord,
   type ParsedAlert,
@@ -91,10 +91,10 @@ export function App() {
   const [exportChannelIdsText, setExportChannelIdsText] = React.useState('');
   const [exportType, setExportType] = React.useState<'alerts' | 'joined'>('joined');
   const [exports, setExports] = React.useState<ExportRecord[]>([]);
-  const [consolidationChannelIdsText, setConsolidationChannelIdsText] = React.useState('');
-  const [consolidationSince, setConsolidationSince] = React.useState('');
-  const [consolidationReplay, setConsolidationReplay] = React.useState<ConsolidationReplayResponse | null>(null);
-  const [consolidationTestRun, setConsolidationTestRun] = React.useState<ConsolidationTestRun | null>(null);
+  const [sentinelEchoChannelIdsText, setSentinelEchoChannelIdsText] = React.useState('');
+  const [sentinelEchoSince, setSentinelEchoSince] = React.useState('');
+  const [sentinelEchoReplay, setSentinelEchoReplay] = React.useState<SentinelEchoReplayResponse | null>(null);
+  const [sentinelEchoTestRun, setSentinelEchoTestRun] = React.useState<SentinelEchoTestRun | null>(null);
 
   const refresh = React.useCallback(async () => {
     const [next, settings, recorder, alerts, drift, exportList] = await Promise.all([
@@ -181,21 +181,21 @@ export function App() {
   const driftByAlert = React.useMemo(() => new Map(driftEvents.map((event) => [event.alert_id, event])), [driftEvents]);
   const latestExport = exports[0];
   const exportChannelIds = React.useMemo(() => parseChannelIds(exportChannelIdsText), [exportChannelIdsText]);
-  const consolidationChannelIds = React.useMemo(() => parseChannelIds(consolidationChannelIdsText), [consolidationChannelIdsText]);
-  const consolidationReplayUrl = React.useMemo(() => {
+  const sentinelEchoChannelIds = React.useMemo(() => parseChannelIds(sentinelEchoChannelIdsText), [sentinelEchoChannelIdsText]);
+  const sentinelEchoReplayUrl = React.useMemo(() => {
     const params = new URLSearchParams();
-    if (consolidationChannelIds.length) params.set('channel_ids', consolidationChannelIds.join(','));
-    if (consolidationSince.trim()) params.set('since', consolidationSince.trim());
+    if (sentinelEchoChannelIds.length) params.set('channel_ids', sentinelEchoChannelIds.join(','));
+    if (sentinelEchoSince.trim()) params.set('since', sentinelEchoSince.trim());
     params.set('limit', '100');
-    return `/api/consolidation/replay/events?${params.toString()}`;
-  }, [consolidationChannelIds, consolidationSince]);
+    return `/api/sentinel-echo/replay/events?${params.toString()}`;
+  }, [sentinelEchoChannelIds, sentinelEchoSince]);
 
   return (
     <div className="app">
       <header className="topbar">
         <div className="brand">
           <span>Sentinel</span>
-          <strong>Simulation Engine</strong>
+          <strong>Sentinel Archive</strong>
         </div>
         <div className="top-actions">
           <Badge tone={snapshot?.replay.active ? 'good' : 'neutral'} label={snapshot?.replay.active ? 'Replay active' : 'Replay stopped'} />
@@ -391,35 +391,35 @@ export function App() {
         </section>
 
         <section className="panel tall">
-          <PanelHeader icon={<PlugZap size={16} />} title="Consolidation Replay" />
+          <PanelHeader icon={<PlugZap size={16} />} title="Sentinel Echo Replay" />
           <div className="stack">
             <label className="field">
               <span>Replay channels</span>
-              <textarea className="compact-textarea channel-filter" value={consolidationChannelIdsText} onChange={(event) => setConsolidationChannelIdsText(event.target.value)} placeholder="Blank replays all channels" spellCheck={false} />
+              <textarea className="compact-textarea channel-filter" value={sentinelEchoChannelIdsText} onChange={(event) => setSentinelEchoChannelIdsText(event.target.value)} placeholder="Blank replays all channels" spellCheck={false} />
             </label>
-            <ChannelChips ids={consolidationChannelIds} emptyLabel="Replay scope: all channels" />
+            <ChannelChips ids={sentinelEchoChannelIds} emptyLabel="Replay scope: all channels" />
             <label className="field">
               <span>Since</span>
-              <input value={consolidationSince} onChange={(event) => setConsolidationSince(event.target.value)} placeholder="2026-06-19T14:30:00+00:00" />
+              <input value={sentinelEchoSince} onChange={(event) => setSentinelEchoSince(event.target.value)} placeholder="2026-06-19T14:30:00+00:00" />
             </label>
             <div className="button-row">
-              <button type="button" onClick={() => run('Loading Consolidation replay', async () => setConsolidationReplay(await api.consolidationReplayEvents(consolidationChannelIds, consolidationSince, 100)))}>
+              <button type="button" onClick={() => run('Loading Sentinel Echo replay', async () => setSentinelEchoReplay(await api.sentinelEchoReplayEvents(sentinelEchoChannelIds, sentinelEchoSince, 100)))}>
                 <RotateCcw size={15} />
                 Events
               </button>
-              <button className="primary" type="button" onClick={() => run('Writing Consolidation test run', async () => setConsolidationTestRun(await api.createConsolidationTestRun('Consolidation UI test', consolidationChannelIds, consolidationSince, 1000)))}>
+              <button className="primary" type="button" onClick={() => run('Writing Sentinel Echo test run', async () => setSentinelEchoTestRun(await api.createSentinelEchoTestRun('Sentinel Echo UI test', sentinelEchoChannelIds, sentinelEchoSince, 1000)))}>
                 <Download size={15} />
                 JSONL
               </button>
             </div>
             <div className="recorder-status">
-              <Badge tone={consolidationReplay?.event_count ? 'good' : 'neutral'} label={`${consolidationReplay ? number(consolidationReplay.event_count, 0) : '0'} events`} />
-              <span>{consolidationReplay?.contract_version || 'simulation.consolidation.replay.v1'}</span>
+              <Badge tone={sentinelEchoReplay?.event_count ? 'good' : 'neutral'} label={`${sentinelEchoReplay ? number(sentinelEchoReplay.event_count, 0) : '0'} events`} />
+              <span>{sentinelEchoReplay?.contract_version || 'simulation.sentinel-echo.replay.v1'}</span>
             </div>
-            <p className="path-readout">{consolidationReplayUrl}</p>
-            <p className="path-readout">{consolidationTestRun ? consolidationTestRun.file_path : 'No test run yet'}</p>
+            <p className="path-readout">{sentinelEchoReplayUrl}</p>
+            <p className="path-readout">{sentinelEchoTestRun ? sentinelEchoTestRun.file_path : 'No test run yet'}</p>
             <pre className="json-preview">
-              {consolidationReplay?.events[0] ? JSON.stringify(consolidationReplay.events[0], null, 2) : 'No replay event loaded'}
+              {sentinelEchoReplay?.events[0] ? JSON.stringify(sentinelEchoReplay.events[0], null, 2) : 'No replay event loaded'}
             </pre>
           </div>
         </section>

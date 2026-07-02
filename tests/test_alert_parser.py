@@ -1,6 +1,6 @@
 import types
 
-from simulation_engine.alert_parser import build_discord_alert_text, parse_alert_text
+from sentinel_archive.alert_parser import build_discord_alert_text, parse_alert_text
 
 
 def test_parse_buy_alert_normalizes_contract_key():

@@ -2,7 +2,7 @@ import asyncio
 import csv
 from pathlib import Path
 
-from simulation_engine.recorder_models import (
+from sentinel_archive.recorder_models import (
     DiscordMessageRecord,
     MarketBarRecord,
     MarketSnapshotRecord,
@@ -34,7 +34,7 @@ def test_parsed_alert_accepts_unparsed_message():
 
 
 def test_store_persists_settings_and_masks_token(tmp_path):
-    from simulation_engine.recording_store import RecordingStore
+    from sentinel_archive.recording_store import RecordingStore
 
     async def run():
         store = RecordingStore(tmp_path / "recorder.sqlite3")
@@ -52,7 +52,7 @@ def test_store_persists_settings_and_masks_token(tmp_path):
 
 
 def test_store_persists_recording_objects(tmp_path):
-    from simulation_engine.recording_store import RecordingStore
+    from sentinel_archive.recording_store import RecordingStore
 
     async def run():
         store = RecordingStore(tmp_path / "recorder.sqlite3")
@@ -135,7 +135,7 @@ def test_store_persists_recording_objects(tmp_path):
 
 
 def test_store_exports_timestamped_channel_aware_alert_csv(tmp_path):
-    from simulation_engine.recording_store import RecordingStore
+    from sentinel_archive.recording_store import RecordingStore
 
     async def run():
         store = RecordingStore(tmp_path / "recorder.sqlite3")
@@ -184,7 +184,7 @@ def test_store_exports_timestamped_channel_aware_alert_csv(tmp_path):
 
 
 def test_store_lists_alerts_newest_discord_message_first(tmp_path):
-    from simulation_engine.recording_store import RecordingStore
+    from sentinel_archive.recording_store import RecordingStore
 
     async def run():
         store = RecordingStore(tmp_path / "recorder.sqlite3")

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_NAME="Sentinel Simulation Engine"
-DESKTOP_COMMAND_NAME="Sentinel Simulation Engine.command"
+APP_NAME="Sentinel Archive"
+DESKTOP_COMMAND_NAME="Sentinel Archive.command"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_FILE="${HOME}/Desktop/Sentinel-Simulation-Engine.log"
+LOG_FILE="${HOME}/Desktop/Sentinel-Archive.log"
 PORT=9200
 INSTALL_DEPS=0
 REBUILD=0
@@ -163,7 +163,7 @@ launch_app() {
   local venv_python="${ROOT_DIR}/.venv/bin/python"
   local url="http://127.0.0.1:${PORT}"
   log "Starting ${APP_NAME} on ${url}"
-  (cd "$ROOT_DIR" && "$venv_python" -m uvicorn simulation_engine.main:app --host 127.0.0.1 --port "$PORT") >> "$LOG_FILE" 2>&1 &
+  (cd "$ROOT_DIR" && "$venv_python" -m uvicorn sentinel_archive.main:app --host 127.0.0.1 --port "$PORT") >> "$LOG_FILE" 2>&1 &
   local server_pid=$!
 
   cleanup() {

@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from .contracts import pulse_handoff_contract_document
 from .bot_event_bus_api import create_bot_event_bus_router
 from .chrome_bridge_api import create_chrome_bridge_router
-from .core import SimulationEngine
+from .core import SentinelArchive
 from .csv_import import parse_ohlcv_csv
 from .discord_recorder import DiscordRecorder
 from .models import SimulationConfig
@@ -35,6 +35,11 @@ class StartReplayRequest(BaseModel):
     loop: bool = False
 
 
+class BotControlRequest(BaseModel):
+    enable_all: bool = True
+    disable_all: bool = True
+
+
 def require_api_key(x_api_key: str | None = Header(None), authorization: str | None = Header(None)) -> bool:
     provided = x_api_key or ""
     if not provided and authorization:
@@ -45,11 +50,11 @@ def require_api_key(x_api_key: str | None = Header(None), authorization: str | N
 
 
 def create_app(
-    engine: SimulationEngine | None = None,
-    recorder_db_path: str | Path = "data/simulation_engine.sqlite3",
+    engine: SentinelArchive | None = None,
+    recorder_db_path: str | Path = "data/sentinel_archive.sqlite3",
     recorder_export_root: str | Path = "data/recordings",
 ) -> FastAPI:
-    engine_instance = engine or SimulationEngine()
+    engine_instance = engine or SentinelArchive()
     recorder_store = RecordingStore(recorder_db_path)
     discord_recorder = DiscordRecorder(recorder_store)
 
@@ -78,7 +83,7 @@ def create_app(
                 except asyncio.CancelledError:
                     pass
 
-    app = FastAPI(title="Sentinel Simulation Engine", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="Sentinel Archive", version="0.1.0", lifespan=lifespan)
     app.state.engine = engine_instance
     app.state.recorder_store = recorder_store
     app.state.discord_recorder = discord_recorder
@@ -93,16 +98,20 @@ def create_app(
     app.include_router(create_bot_event_bus_router(), prefix="/api")
     app.include_router(create_chrome_bridge_router(recorder_store, discord_recorder), prefix="/api")
 
-    def current_engine() -> SimulationEngine:
+    def current_engine() -> SentinelArchive:
         return app.state.engine
 
     @app.get("/api/health")
-    async def health(sim: SimulationEngine = Depends(current_engine)):
+    async def health(sim: SentinelArchive = Depends(current_engine)):
         snapshot = sim.snapshot()
         return {
             "status": "online",
-            "service": "sentinel-simulation-engine",
+            "service": "sentinel-archive",
+            "mode": "simulation",
+            "execution": "none",
             "running": snapshot.replay.active,
+            "bot_running": sim.bot_running,
+            "bot_paused": sim.bot_paused,
             "market_open": True,
             "replay": snapshot.replay.model_dump(mode="json"),
             "symbols": sorted(snapshot.current_prices),
@@ -111,30 +120,43 @@ def create_app(
 
     @app.get("/api/live")
     async def live():
-        return {"status": "live", "service": "sentinel-simulation-engine"}
+        return {
+            "status": "live",
+            "service": "sentinel-archive",
+            "mode": "simulation",
+            "execution": "none",
+            "consumer_notes": "live means the Sentinel Archive HTTP service is reachable; it never means live trading is enabled",
+        }
 
     @app.get("/api/ready")
     async def ready():
-        return {"ready": True, "status": "ready", "failing_checks": [], "failing_check_details": []}
+        return {
+            "ready": True,
+            "status": "ready",
+            "mode": "simulation",
+            "execution": "none",
+            "failing_checks": [],
+            "failing_check_details": [],
+        }
 
     @app.get("/api/simulation/config")
-    async def get_config(sim: SimulationEngine = Depends(current_engine)):
+    async def get_config(sim: SentinelArchive = Depends(current_engine)):
         return sim.config
 
     @app.put("/api/simulation/config")
-    async def put_config(config: SimulationConfig, sim: SimulationEngine = Depends(current_engine)):
+    async def put_config(config: SimulationConfig, sim: SentinelArchive = Depends(current_engine)):
         return sim.update_config(config)
 
     @app.post("/api/simulation/reset")
-    async def reset(config: SimulationConfig | None = None, sim: SimulationEngine = Depends(current_engine)):
+    async def reset(config: SimulationConfig | None = None, sim: SentinelArchive = Depends(current_engine)):
         return sim.reset(config)
 
     @app.get("/api/simulation/state")
-    async def state(sim: SimulationEngine = Depends(current_engine)):
+    async def state(sim: SentinelArchive = Depends(current_engine)):
         return sim.snapshot()
 
     @app.post("/api/simulation/replay/import/csv")
-    async def import_csv(body: CsvImportRequest, sim: SimulationEngine = Depends(current_engine)):
+    async def import_csv(body: CsvImportRequest, sim: SentinelArchive = Depends(current_engine)):
         try:
             bars = parse_ohlcv_csv(body.csv_text)
             session = sim.import_bars(body.name, bars)
@@ -143,36 +165,71 @@ def create_app(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.get("/api/simulation/replay/sessions")
-    async def list_sessions(sim: SimulationEngine = Depends(current_engine)):
+    async def list_sessions(sim: SentinelArchive = Depends(current_engine)):
         return {"sessions": list(sim.sessions.values())}
 
     @app.get("/api/simulation/replay/sessions/{session_id}")
-    async def get_session(session_id: str, sim: SimulationEngine = Depends(current_engine)):
+    async def get_session(session_id: str, sim: SentinelArchive = Depends(current_engine)):
         if session_id not in sim.sessions:
             raise HTTPException(404, f"Replay session '{session_id}' not found")
         return {"session": sim.sessions[session_id], "bars": sim.bars[session_id]}
 
     @app.post("/api/simulation/replay/sessions/{session_id}/start")
-    async def start_replay(session_id: str, body: StartReplayRequest, sim: SimulationEngine = Depends(current_engine)):
+    async def start_replay(session_id: str, body: StartReplayRequest, sim: SentinelArchive = Depends(current_engine)):
         try:
             return sim.start_replay(session_id, speed=body.speed, loop=body.loop)
         except ValueError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.post("/api/simulation/replay/step")
-    async def step_replay(sim: SimulationEngine = Depends(current_engine)):
+    async def step_replay(sim: SentinelArchive = Depends(current_engine)):
         return sim.step()
 
     @app.post("/api/simulation/replay/stop")
-    async def stop_replay(sim: SimulationEngine = Depends(current_engine)):
+    async def stop_replay(sim: SentinelArchive = Depends(current_engine)):
         return sim.stop_replay()
 
     @app.post("/api/simulation/handoff")
-    async def native_handoff(payload: dict[str, Any], sim: SimulationEngine = Depends(current_engine)):
+    async def native_handoff(payload: dict[str, Any], sim: SentinelArchive = Depends(current_engine)):
         return sim.process_handoff(payload)
 
+    @app.post("/api/bot/start", dependencies=[Depends(require_api_key)])
+    async def start_bot(body: BotControlRequest | None = None, sim: SentinelArchive = Depends(current_engine)):
+        settings = body or BotControlRequest()
+        if settings.enable_all:
+            for ticker in sim.tickers.values():
+                ticker.enabled = True
+                ticker.auto_stop_reason = None
+        sim.bot_running = True
+        sim.bot_paused = False
+        tickers = [ticker.model_dump(mode="json") for ticker in sim.tickers.values()]
+        return {
+            "running": True,
+            "paused": False,
+            "tickers": tickers,
+            "mode": "simulation",
+            "execution": "none",
+        }
+
+    @app.post("/api/bot/stop", dependencies=[Depends(require_api_key)])
+    async def stop_bot(body: BotControlRequest | None = None, sim: SentinelArchive = Depends(current_engine)):
+        settings = body or BotControlRequest()
+        if settings.disable_all:
+            for ticker in sim.tickers.values():
+                ticker.enabled = False
+        sim.bot_running = False
+        sim.bot_paused = False
+        tickers = [ticker.model_dump(mode="json") for ticker in sim.tickers.values()]
+        return {
+            "running": False,
+            "paused": False,
+            "tickers": tickers,
+            "mode": "simulation",
+            "execution": "none",
+        }
+
     @app.get("/api/automation")
-    async def automation(sim: SimulationEngine = Depends(current_engine)):
+    async def automation(sim: SentinelArchive = Depends(current_engine)):
         return {
             "settings": {
                 "enabled": True,
@@ -184,7 +241,7 @@ def create_app(
         }
 
     @app.get("/api/decisions")
-    async def decisions(sim: SimulationEngine = Depends(current_engine)):
+    async def decisions(sim: SentinelArchive = Depends(current_engine)):
         return {"decisions": sim.decisions}
 
     @app.get("/api/pulse/handoff/schema")
@@ -192,22 +249,22 @@ def create_app(
         return pulse_handoff_contract_document()
 
     @app.get("/api/pulse/account")
-    async def edge_pulse_account(sim: SimulationEngine = Depends(current_engine)):
+    async def edge_pulse_account(sim: SentinelArchive = Depends(current_engine)):
         return sim.account_status()
 
     @app.get("/api/pulse/positions")
-    async def edge_pulse_positions(sim: SimulationEngine = Depends(current_engine)):
+    async def edge_pulse_positions(sim: SentinelArchive = Depends(current_engine)):
         return {"positions": list(sim.account_status()["positions"])}
 
     @app.get("/api/price/{symbol}")
-    async def price(symbol: str, sim: SimulationEngine = Depends(current_engine)):
+    async def price(symbol: str, sim: SentinelArchive = Depends(current_engine)):
         normalized = symbol.upper()
         if normalized not in sim.current_prices:
             raise HTTPException(404, "price unavailable")
         return {"symbol": normalized, "price": sim.current_prices[normalized]}
 
     @app.get("/api/quote/{symbol}")
-    async def quote(symbol: str, sim: SimulationEngine = Depends(current_engine)):
+    async def quote(symbol: str, sim: SentinelArchive = Depends(current_engine)):
         normalized = symbol.upper()
         if normalized not in sim.current_prices:
             raise HTTPException(404, "quote unavailable")
@@ -215,7 +272,7 @@ def create_app(
         return {"symbol": normalized, "price": price_value, "last": price_value, "source": "simulation_replay"}
 
     @app.get("/api/edge/status", dependencies=[Depends(require_api_key)])
-    async def pulse_edge_status(sim: SimulationEngine = Depends(current_engine)):
+    async def pulse_edge_status(sim: SentinelArchive = Depends(current_engine)):
         return {
             "api_key_configured": True,
             "signals_cached": len(sim.decisions),
@@ -226,15 +283,15 @@ def create_app(
         }
 
     @app.get("/api/edge/account/status", dependencies=[Depends(require_api_key)])
-    async def pulse_account_status(sim: SimulationEngine = Depends(current_engine)):
+    async def pulse_account_status(sim: SentinelArchive = Depends(current_engine)):
         return sim.account_status()
 
     @app.get("/api/edge/tickers", dependencies=[Depends(require_api_key)])
-    async def pulse_tickers(sim: SimulationEngine = Depends(current_engine)):
+    async def pulse_tickers(sim: SentinelArchive = Depends(current_engine)):
         return [ticker.model_dump(mode="json") for ticker in sim.tickers.values()]
 
     @app.get("/api/edge/positions/{symbol}", dependencies=[Depends(require_api_key)])
-    async def pulse_position(symbol: str, sim: SimulationEngine = Depends(current_engine)):
+    async def pulse_position(symbol: str, sim: SentinelArchive = Depends(current_engine)):
         normalized = symbol.upper()
         position = sim.account.positions.get(normalized)
         if not position:
@@ -242,7 +299,7 @@ def create_app(
         return {"has_position": True, **position.model_dump(mode="json")}
 
     @app.post("/api/edge/handoff", status_code=202, dependencies=[Depends(require_api_key)])
-    async def pulse_handoff(payload: dict[str, Any], response: Response, sim: SimulationEngine = Depends(current_engine)):
+    async def pulse_handoff(payload: dict[str, Any], response: Response, sim: SentinelArchive = Depends(current_engine)):
         result = sim.process_handoff(payload)
         if result.get("status") == "failed":
             response.status_code = 400
@@ -251,7 +308,7 @@ def create_app(
         return result
 
     @app.post("/api/edge/tickers/{symbol}/decision", dependencies=[Depends(require_api_key)])
-    async def legacy_decision(symbol: str, payload: dict[str, Any], sim: SimulationEngine = Depends(current_engine)):
+    async def legacy_decision(symbol: str, payload: dict[str, Any], sim: SentinelArchive = Depends(current_engine)):
         action = str(payload.get("decision") or payload.get("action") or "hold")
         mapped = {
             "enable_trailing_stop": "trailing_stop",
@@ -277,7 +334,7 @@ def create_app(
         return sim.process_handoff({key: value for key, value in handoff.items() if value is not None})
 
     @app.post("/api/edge/tickers/{symbol}/trailing", dependencies=[Depends(require_api_key)])
-    async def enable_trailing(symbol: str, payload: dict[str, Any], sim: SimulationEngine = Depends(current_engine)):
+    async def enable_trailing(symbol: str, payload: dict[str, Any], sim: SentinelArchive = Depends(current_engine)):
         percent = float(payload.get("trailing_percent", sim.config.default_trailing_percent))
         handoff = {
             "contract_version": "edge.pulse.handoff.v1",

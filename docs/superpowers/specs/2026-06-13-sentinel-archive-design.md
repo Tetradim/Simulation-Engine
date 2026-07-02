@@ -1,12 +1,12 @@
-# Simulation Engine Design
+# Sentinel Archive Design
 
 ## Goal
 
-Build a standalone Sentinel Simulation Engine that can replay recorded market-day price action, emulate the Edge/Pulse HTTP contracts, and let users tune execution, replay, account, risk, and signal settings from a web control panel.
+Build a standalone Sentinel Archive that can replay recorded market-day price action, emulate the Edge/Pulse HTTP contracts, and let users tune execution, replay, account, risk, and signal settings from a web control panel.
 
 ## Architecture
 
-The first release is a single FastAPI service with an embedded deterministic simulation core and a React/Vite control panel. The same service can be used as an Edge-compatible API, a Pulse-compatible API, or both at once. Tandem Suite can point `EDGE_API_URL` and `PULSE_API_URL` to this engine to show a live tandem dashboard without changing Tandem code.
+The first release is a single FastAPI service with an embedded deterministic simulation core and a React/Vite control panel. The same service can be used as an Edge-compatible API, a Pulse-compatible API, or both at once. Sentinel Core can point `EDGE_API_URL` and `PULSE_API_URL` to this engine to show a live Sentinel Core dashboard without changing Sentinel Core code.
 
 ## Core Capabilities
 
@@ -15,7 +15,7 @@ The first release is a single FastAPI service with an embedded deterministic sim
 - Maintain simulated account cash, equity, buying power, positions, orders, decisions, event log, and tickers.
 - Apply configurable execution assumptions: starting cash, default quantity, max allocation, slippage, commission, fill ratio, latency, regular stop, trailing stop, take profit, and reject-below-confidence gate.
 - Accept Edge structured handoffs at `/api/edge/handoff` and mutate simulated Pulse broker state.
-- Expose Tandem-facing Edge endpoints: `/api/live`, `/api/ready`, `/api/automation`, `/api/decisions`, `/api/pulse/handoff/schema`, `/api/pulse/account`, `/api/pulse/positions`.
+- Expose Sentinel Core-facing Edge endpoints: `/api/live`, `/api/ready`, `/api/automation`, `/api/decisions`, `/api/pulse/handoff/schema`, `/api/pulse/account`, `/api/pulse/positions`.
 - Expose Pulse-facing Edge integration endpoints: `/api/edge/status`, `/api/edge/account/status`, `/api/edge/tickers`, `/api/edge/positions/{symbol}`, `/api/edge/tickers/{symbol}/decision`, `/api/edge/tickers/{symbol}/trailing`, `/api/edge/signals/evaluate`.
 - Work without live brokers and without seeded market data. Empty states should be explicit until users import bars or send handoffs.
 

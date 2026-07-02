@@ -2,7 +2,7 @@
 
 ## Goal
 
-Replace the existing Sentinel Simulation Engine control panel with a chart-first Replay Workbench for testing recorded market-day price action against the Sentinel bot suite.
+Replace the existing Sentinel Archive control panel with a chart-first Replay Workbench for testing recorded market-day price action against the Sentinel bot suite.
 
 The UI should make recorded replay feel like an operator cockpit: select a market session, inspect price action, replay forward with media-style controls, watch simulated handoffs and bot outputs, and review orders, fills, risk events, drawdown, and exports from one workspace.
 
@@ -14,7 +14,7 @@ The approved layout is Option A, "Replay Workbench":
 
 - Left rail: replay sessions, scenario library, imports, exports, and replay setup.
 - Center: primary price-action chart with candle/line modes, indicators, volume, heatmap layer, buy/sell markers, and synchronized replay controls.
-- Right rail: bot contract lanes for Sentinel Pulse, Sentinel Edge, Consolidation, Auto-Crypto, and Darkpool-Mon.
+- Right rail: bot contract lanes for Sentinel Pulse, Sentinel Edge, Sentinel Echo, Sentinel-Chain, and Sentinel-Flare.
 - Bottom band: results snapshot, fill-model confidence, synchronized event tape, and drill-in report surfaces.
 
 The visual style starts with dark metallic red/gold/silver framing from the provided `Desktop/Pics` references and dense trading-dashboard structure from `Desktop/Dark`. Color, background, opacity, and glass-card treatments are intentionally deferred to a visual-polish pass after the workflow is implemented and verified.
@@ -46,7 +46,7 @@ The first replacement UI includes:
 - Handoff composer for manual bot-contract tests.
 - Positions table with current price, average entry, quantity, P/L, trailing state, and stop context.
 - Event tape combining decisions, simulated fills, replay state, recorder alerts, and drift events where available.
-- Discord recorder controls, parser preview, imports, exports, and Consolidation replay/test-run generation.
+- Discord recorder controls, parser preview, imports, exports, and Sentinel Echo replay/test-run generation.
 - Bot lanes and drawers for the target bot workflows.
 - Empty, loading, degraded, and API-error states for every lane.
 
@@ -55,7 +55,7 @@ The first replacement UI includes:
 - No broker connections.
 - No live orders.
 - No live trading enablement.
-- No replacement of bot-specific execution logic inside Pulse, Edge, Consolidation, Auto-Crypto, or Darkpool-Mon.
+- No replacement of bot-specific execution logic inside Pulse, Edge, Sentinel Echo, Sentinel-Chain, or Sentinel-Flare.
 - No backend rewrite unless a frontend requirement exposes missing data that cannot be derived safely from existing endpoints.
 - No pixel-perfect visual-theme finalization in the first implementation pass.
 
@@ -111,7 +111,7 @@ Recorder operations:
 - Stock and option price CSV imports.
 - Drift event review.
 - Export alerts or joined datasets.
-- Consolidation replay URL/test-run creation.
+- Sentinel Echo replay URL/test-run creation.
 
 ### Bot Contracts
 
@@ -119,9 +119,9 @@ Bot-specific contract review:
 
 - Sentinel Pulse: bracket order assumptions, simulated accepted/rejected handoffs, positions, stop/trailing/take-profit behavior, and partial fill assumptions.
 - Sentinel Edge: readiness, handoff gating, confidence, cooldown, suppression, and decision feed feedback.
-- Consolidation: Discord alert parser result, source-policy preview, replay event compatibility, and no-mutation preview status.
-- Auto-Crypto: alert normalization, risk checks, paper order state, bracket lot stops/take-profits, and symbol/exchange context.
-- Darkpool-Mon: confluence/intent packet preview, manual-review status, risk envelope, and reasons a Pulse packet is withheld.
+- Sentinel Echo: Discord alert parser result, source-policy preview, replay event compatibility, and no-mutation preview status.
+- Sentinel-Chain: alert normalization, risk checks, paper order state, bracket lot stops/take-profits, and symbol/exchange context.
+- Sentinel-Flare: confluence/intent packet preview, manual-review status, risk envelope, and reasons a Pulse packet is withheld.
 
 ### Settings
 
@@ -163,9 +163,9 @@ The UI continues to poll the existing API:
 4. User starts or steps replay through existing replay endpoints.
 5. The backend advances replay state and returns updated account, prices, decisions, positions, and events.
 6. The UI derives bot-lane statuses from snapshot fields and recorder data.
-7. Consolidation replay/test-run actions continue to call existing recorder API endpoints.
+7. Sentinel Echo replay/test-run actions continue to call existing recorder API endpoints.
 
-No browser route should call broker-capable endpoints. The Simulation Engine remains a local paper/simulation surface.
+No browser route should call broker-capable endpoints. The Sentinel Archive remains a local paper/simulation surface.
 
 ## Fill Confidence Model
 
@@ -175,7 +175,7 @@ Every run should display a fill-confidence label:
 - Medium: OHLCV bars with slippage, commission, high/low stop checks, and documented assumptions.
 - Low: sparse bars, missing volume, missing timestamps, or symbols falling through to a non-replay price source.
 
-The current Simulation Engine primarily imports OHLCV CSV rows, so the default label should be Medium when rows include valid open, high, low, close, volume, and timestamps. If volume or high/low is missing, downgrade confidence and show the reason.
+The current Sentinel Archive primarily imports OHLCV CSV rows, so the default label should be Medium when rows include valid open, high, low, close, volume, and timestamps. If volume or high/low is missing, downgrade confidence and show the reason.
 
 ## Visual Direction
 
@@ -215,7 +215,7 @@ Required states:
 - Replay active but no current price for selected symbol: chart warning and symbol fallback.
 - Recorder not configured: settings prompt, not an error.
 - Discord token/channel failure: diagnostic result with masked token behavior.
-- Consolidation replay empty: event-count zero state with filter guidance.
+- Sentinel Echo replay empty: event-count zero state with filter guidance.
 - Bot lane unavailable: per-lane degraded badge and last known detail.
 
 ## Testing Plan

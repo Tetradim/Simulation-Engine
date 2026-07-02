@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
 import json
 import re
@@ -47,8 +48,8 @@ class RecordingSessionRequest(BaseModel):
     source: str = "manual"
 
 
-class ConsolidationTestRunRequest(BaseModel):
-    name: str = Field(default="Consolidation replay test", min_length=1, max_length=120)
+class SentinelEchoTestRunRequest(BaseModel):
+    name: str = Field(default="Sentinel Echo replay test", min_length=1, max_length=120)
     channel_id: str | None = None
     channel_ids: list[str] = Field(default_factory=list)
     since: str | None = None
@@ -123,7 +124,7 @@ def create_recorder_router(
                 payload=body.model_dump(mode="json"),
                 correlation_id=body.message_id,
                 dedupe_key=f"simulation-discord-message:{body.message_id}",
-                target_bots=["sentinel-edge", "consolidation"],
+                target_bots=["sentinel-edge", "sentinel-echo"],
                 trace={"recorder_result": result},
             )
         return {"status": result}
@@ -241,23 +242,24 @@ def create_recorder_router(
     @router.get("/replay/events")
     async def replay_events(limit: int = 1000, channel_id: str | None = None, channel_ids: str | None = None):
         channels = normalize_channel_ids([channel_id, channel_ids])
-        return {"events": await _replay_events(store, limit=limit, channel_ids=channels)}
+        events = await _replay_events(store, limit=limit, channel_ids=channels)
+        return _replay_session_response(events, channel_ids=channels)
 
-    @router.get("/consolidation/replay/events")
-    async def consolidation_replay_events(
+    @router.get("/sentinel-echo/replay/events")
+    async def sentinel_echo_replay_events(
         limit: int = 1000,
         channel_id: str | None = None,
         channel_ids: str | None = None,
         since: str | None = None,
     ):
         channels = normalize_channel_ids([channel_id, channel_ids])
-        return await _consolidation_replay_response(store, limit=limit, channel_ids=channels, since=since)
+        return await _sentinel_echo_replay_response(store, limit=limit, channel_ids=channels, since=since)
 
-    @router.post("/consolidation/test-runs")
-    async def create_consolidation_test_run(body: ConsolidationTestRunRequest):
+    @router.post("/sentinel-echo/test-runs")
+    async def create_sentinel_echo_test_run(body: SentinelEchoTestRunRequest):
         channels = normalize_channel_ids([body.channel_id, body.channel_ids])
-        replay = await _consolidation_replay_response(store, limit=body.limit, channel_ids=channels, since=body.since)
-        return await _write_consolidation_test_run(
+        replay = await _sentinel_echo_replay_response(store, limit=body.limit, channel_ids=channels, since=body.since)
+        return await _write_sentinel_echo_test_run(
             store,
             export_root=export_root,
             name=body.name,
@@ -309,7 +311,37 @@ async def _replay_events(store: RecordingStore, *, limit: int, channel_ids: list
     return events[:limit]
 
 
-async def _consolidation_replay_response(
+def _replay_source_day(events: list[dict[str, Any]]) -> str | None:
+    for event in events:
+        timestamp = str(event.get("timestamp") or "")
+        if len(timestamp) >= 10:
+            return timestamp[:10]
+    return None
+
+
+def _replay_session_response(events: list[dict[str, Any]], *, channel_ids: list[str]) -> dict[str, Any]:
+    event_types = sorted({str(event.get("type") or "") for event in events if event.get("type")})
+    manifest_sha256 = _manifest_sha256(events)
+    return {
+        "contract_version": "simulation.replay_session.v1",
+        "mode": "simulation",
+        "execution": "none",
+        "replay_session": {
+            "contract_version": "replay_session.v1",
+            "session_id": f"recorder-replay-{_replay_source_day(events) or 'empty'}",
+            "source_day": _replay_source_day(events),
+            "event_count": len(events),
+            "event_types": event_types,
+            "filters": {"channel_ids": channel_ids},
+            "consumer_notes": "read-only replay data; never a live execution signal",
+        },
+        "manifest_hash_algorithm": "sha256",
+        "manifest_sha256": manifest_sha256,
+        "events": events,
+    }
+
+
+async def _sentinel_echo_replay_response(
     store: RecordingStore,
     *,
     limit: int,
@@ -337,16 +369,22 @@ async def _consolidation_replay_response(
         )
 
     next_cursor = events[-1]["timestamp"] if len(events) == limit and events else None
+    manifest_sha256 = _manifest_sha256(events)
     return {
-        "contract_version": "simulation.consolidation.replay.v1",
+        "contract_version": "simulation.sentinel-echo.replay.v1",
+        "mode": "simulation",
+        "execution": "none",
+        "consumer_notes": "read-only replay data; never a live execution signal",
         "event_count": len(events),
+        "manifest_hash_algorithm": "sha256",
+        "manifest_sha256": manifest_sha256,
         "filters": {"channel_id": channel_ids[0] if len(channel_ids) == 1 else None, "channel_ids": channel_ids, "since": since, "limit": limit},
         "next_cursor": next_cursor,
         "events": events,
     }
 
 
-async def _write_consolidation_test_run(
+async def _write_sentinel_echo_test_run(
     store: RecordingStore,
     *,
     export_root: str | Path,
@@ -356,19 +394,19 @@ async def _write_consolidation_test_run(
     replay: dict[str, Any],
 ) -> dict[str, Any]:
     created_at = datetime.now(timezone.utc)
-    run_id = f"consolidation-run-{uuid4().hex[:12]}"
-    folder = Path(export_root) / created_at.strftime("%Y-%m-%d") / "consolidation-test-runs"
+    run_id = f"sentinel-echo-run-{uuid4().hex[:12]}"
+    folder = Path(export_root) / created_at.strftime("%Y-%m-%d") / "sentinel-echo-test-runs"
     folder.mkdir(parents=True, exist_ok=True)
     file_path = folder / f"{created_at.strftime('%Y%m%d-%H%M%S')}-{_safe_slug(name)}-{run_id}.jsonl"
-    with file_path.open("w", encoding="utf-8") as handle:
-        for event in replay["events"]:
-            handle.write(json.dumps(event, separators=(",", ":"), ensure_ascii=False) + "\n")
+    manifest_bytes = _manifest_bytes(replay["events"])
+    file_path.write_bytes(manifest_bytes)
+    manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
 
     export = ExportRecord(
         export_id=run_id,
         created_at=created_at.isoformat(),
         channel_id="-".join(channel_ids) if channel_ids else "all",
-        channel_name="consolidation-test-run",
+        channel_name="sentinel-echo-test-run",
         format="jsonl",
         file_path=str(file_path),
         row_count=int(replay["event_count"]),
@@ -381,12 +419,14 @@ async def _write_consolidation_test_run(
         query["channel_ids"] = ",".join(channel_ids)
     if since:
         query["since"] = since
-    replay_url = "/api/consolidation/replay/events"
+    replay_url = "/api/sentinel-echo/replay/events"
     if query:
         replay_url = f"{replay_url}?{urlencode(query)}"
 
     return {
-        "contract_version": "simulation.consolidation.test_run.v1",
+        "contract_version": "simulation.sentinel-echo.test_run.v1",
+        "mode": "simulation",
+        "execution": "none",
         "run_id": run_id,
         "name": name,
         "created_at": created_at.isoformat(),
@@ -394,6 +434,8 @@ async def _write_consolidation_test_run(
         "replay_contract_version": replay["contract_version"],
         "event_count": replay["event_count"],
         "file_path": str(file_path),
+        "manifest_hash_algorithm": "sha256",
+        "manifest_sha256": manifest_sha256,
         "replay_url": replay_url,
         "filters": {"channel_id": channel_ids[0] if len(channel_ids) == 1 else None, "channel_ids": channel_ids, "since": since},
     }
@@ -415,3 +457,12 @@ def _fake_message(body: IngestMessageRequest) -> Any:
 def _safe_slug(value: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", str(value).lower()).strip("-")
     return slug or "test-run"
+
+
+def _manifest_bytes(events: list[dict[str, Any]]) -> bytes:
+    body = "".join(json.dumps(event, separators=(",", ":"), ensure_ascii=False) + "\n" for event in events)
+    return body.encode("utf-8")
+
+
+def _manifest_sha256(events: list[dict[str, Any]]) -> str:
+    return hashlib.sha256(_manifest_bytes(events)).hexdigest()

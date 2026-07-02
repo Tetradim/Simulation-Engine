@@ -26,7 +26,7 @@ from .recorder_models import (
 
 
 class RecordingStore:
-    def __init__(self, db_path: str | Path = "data/simulation_engine.sqlite3"):
+    def __init__(self, db_path: str | Path = "data/sentinel_archive.sqlite3"):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 

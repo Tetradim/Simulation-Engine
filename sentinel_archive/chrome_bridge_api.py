@@ -79,14 +79,14 @@ def create_chrome_bridge_router(store: RecordingStore, recorder: DiscordRecorder
                 notes="Observed from Chrome Discord bridge.",
             )
         )
-        recording_status = await recorder.handle_message(synthetic_message, bot_user_id="simulation-engine")
+        recording_status = await recorder.handle_message(synthetic_message, bot_user_id="sentinel-archive")
         event = publish_event(
             "signal.observed",
             source_bot="chrome-discord-bridge",
             payload=_message_payload(payload, raw_text, recording_status=recording_status),
             correlation_id=payload.event_id,
             dedupe_key=f"chrome-discord:{payload.event_id}",
-            target_bots=["simulation-engine"],
+            target_bots=["sentinel-archive"],
         )
         return {
             "status": "accepted",
@@ -108,7 +108,7 @@ def create_chrome_bridge_router(store: RecordingStore, recorder: DiscordRecorder
             source_bot="chrome-discord-bridge",
             payload=heartbeat,
             dedupe_key=f"chrome-bridge-health:{heartbeat['status']}:{heartbeat['channel_id']}",
-            target_bots=["simulation-engine"],
+            target_bots=["sentinel-archive"],
         )
         return bridge_health()
 

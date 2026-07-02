@@ -1,1 +1,0 @@
-"""Sentinel Simulation Engine package."""

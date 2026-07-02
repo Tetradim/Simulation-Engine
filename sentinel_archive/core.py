@@ -17,7 +17,42 @@ from .models import (
 )
 
 
-class SimulationEngine:
+_FORBIDDEN_HANDOFF_METADATA_KEYS = {
+    "accountid",
+    "accountnumber",
+    "accesstoken",
+    "apikey",
+    "apisecret",
+    "brokerallocations",
+    "brokerid",
+    "brokerids",
+    "brokerorderid",
+    "credentials",
+    "orderid",
+    "password",
+    "refreshtoken",
+    "secret",
+    "token",
+}
+
+
+def _metadata_key(value: Any) -> str:
+    return "".join(character for character in str(value).lower() if character.isalnum())
+
+
+def _contains_forbidden_handoff_metadata(value: Any) -> bool:
+    if isinstance(value, dict):
+        for key, nested in value.items():
+            if _metadata_key(key) in _FORBIDDEN_HANDOFF_METADATA_KEYS:
+                return True
+            if _contains_forbidden_handoff_metadata(nested):
+                return True
+    elif isinstance(value, list):
+        return any(_contains_forbidden_handoff_metadata(item) for item in value)
+    return False
+
+
+class SentinelArchive:
     def __init__(self, config: SimulationConfig | None = None):
         self.config = config or SimulationConfig()
         self.sessions: dict[str, ReplaySession] = {}
@@ -29,6 +64,8 @@ class SimulationEngine:
         self.event_log: list[dict[str, Any]] = []
         self.idempotency: dict[str, dict[str, Any]] = {}
         self.last_handoff: dict[str, Any] | None = None
+        self.bot_running = False
+        self.bot_paused = False
         self.account = self._new_account()
 
     def _new_account(self) -> AccountState:
@@ -56,6 +93,8 @@ class SimulationEngine:
         self.event_log = []
         self.idempotency = {}
         self.last_handoff = None
+        self.bot_running = False
+        self.bot_paused = False
         self.account = self._new_account()
         return self.snapshot()
 
@@ -146,6 +185,12 @@ class SimulationEngine:
             previous["reason"] = "duplicate"
             return previous
 
+        if handoff.mode == "live":
+            return self._record_handoff(handoff, False, "rejected", "live_mode_not_supported")
+
+        if _contains_forbidden_handoff_metadata(handoff.metadata):
+            return self._record_handoff(handoff, False, "rejected", "broker_metadata_not_supported")
+
         if handoff.confidence < self.config.reject_below_confidence:
             return self._record_handoff(handoff, False, "rejected", "confidence_below_threshold")
 
@@ -172,6 +217,10 @@ class SimulationEngine:
 
     def _buy(self, handoff: PulseHandoffRequest) -> dict[str, Any]:
         symbol = handoff.symbol
+        ticker = self.tickers.setdefault(symbol, TickerState(symbol=symbol))
+        if not ticker.enabled:
+            return self._record_handoff(handoff, False, "rejected", "ticker_disabled")
+
         price = self._price_for(symbol, handoff)
         if price is None:
             return self._record_handoff(handoff, False, "rejected", "price_unavailable")
@@ -206,7 +255,6 @@ class SimulationEngine:
                 high_water_mark=price,
             )
         self.account.cash = round(self.account.cash - total_cost, 6)
-        self.tickers.setdefault(symbol, TickerState(symbol=symbol))
         self._decision("buy", symbol, price, handoff, {"fill_price": fill_price, "quantity": quantity})
         self._mark_to_market()
         return self._record_handoff(handoff, True, "accepted", "pulse_accepted")

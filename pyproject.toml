@@ -1,7 +1,7 @@
 [project]
-name = "sentinel-simulation-engine"
+name = "sentinel-archive"
 version = "0.1.0"
-description = "Standalone market replay and Edge/Pulse contract simulation engine."
+description = "Standalone market replay and Edge/Pulse contract Sentinel Archive."
 requires-python = ">=3.11"
 
 [tool.pytest.ini_options]

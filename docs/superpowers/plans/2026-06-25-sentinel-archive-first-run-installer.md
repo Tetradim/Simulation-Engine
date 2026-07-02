@@ -1,10 +1,10 @@
-# Sentinel Simulation Engine First-Run Installer Implementation Plan
+# Sentinel Archive First-Run Installer Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build an installed Windows launcher and setup artifact that repair missing runtime dependencies on first launch.
 
-**Architecture:** Source checkouts continue through `.venv`, npm, and Vite. Installed packages are detected by `SentinelSimulationEngine.exe`; that path repairs VC++ runtime, starts the packaged FastAPI backend, serves the copied built control panel from `dist/`, and opens the dashboard.
+**Architecture:** Source checkouts continue through `.venv`, npm, and Vite. Installed packages are detected by `SentinelArchive.exe`; that path repairs VC++ runtime, starts the packaged FastAPI backend, serves the copied built control panel from `dist/`, and opens the dashboard.
 
 **Tech Stack:** PowerShell, FastAPI, Vite, PyInstaller, Inno Setup, unittest static checks.
 
@@ -22,8 +22,8 @@
 
 **Files:**
 - Create: `windows_entrypoint.py`
-- Modify: `Launch-Sentinel-Simulation-Engine.bat`
-- Modify: `Launch-Sentinel-Simulation-Engine.ps1`
+- Modify: `Launch-Sentinel-Archive.bat`
+- Modify: `Launch-Sentinel-Archive.ps1`
 
 - [ ] Add a packaged uvicorn entrypoint controlled by `HOST` and `PORT`.
 - [ ] Harden the batch wrapper for partial extracts and argument forwarding.
@@ -36,6 +36,6 @@
 - Modify: `README.md`
 
 - [ ] Build the Vite control panel.
-- [ ] Package `SentinelSimulationEngine.exe`, copied `dist/`, and launcher pair.
-- [ ] Build/upload `SentinelSimulationEngine-Setup-<version>.exe`.
+- [ ] Package `SentinelArchive.exe`, copied `dist/`, and launcher pair.
+- [ ] Build/upload `SentinelArchive-Setup-<version>.exe`.
 - [ ] Document beta installer behavior and support logs.

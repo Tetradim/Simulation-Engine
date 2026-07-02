@@ -1,14 +1,14 @@
-# Sentinel Simulation Engine
+# Sentinel Archive
 
-Local recorded-market simulation, Edge/Pulse contract testing, Discord options alert recording, and Consolidation replay data generation.
+Local recorded-market simulation, Edge/Pulse contract testing, Discord options alert recording, and Sentinel Echo replay data generation.
 
 This project is intentionally local-first. It can stand in for Sentinel Edge, Sentinel Pulse, or both at the same time, while also recording Discord options alerts and market observations for later bot testing.
 
 ## Safety Boundary
 
-The Simulation Engine does not connect to brokers and does not place live orders.
+The Sentinel Archive does not connect to brokers and does not place live orders.
 
-The Discord recorder inside this project is also recorder-only. It listens to Discord, parses alerts, stores market context, calculates drift, exports data, and publishes replay events. It does not execute paper trades, simulate option positions, or replace the Consolidation trading bot.
+The Discord recorder inside this project is also recorder-only. It listens to Discord, parses alerts, stores market context, calculates drift, exports data, and publishes replay events. It does not execute paper trades, simulate option positions, or replace the Sentinel Echo trading bot.
 
 Use this project to answer:
 
@@ -23,7 +23,7 @@ Use this project to answer:
 ## Repository
 
 ```text
-C:\Users\Lite OS\Documents\Codex\2026-06-12\c-users-lite-os-openclaw-workspace\work\Simulation-Engine
+C:\Users\Lite OS\Documents\Codex\2026-06-12\c-users-lite-os-openclaw-workspace\work\Sentinel-Archive
 ```
 
 ## Current Capability Map
@@ -44,8 +44,8 @@ C:\Users\Lite OS\Documents\Codex\2026-06-12\c-users-lite-os-openclaw-workspace\w
 | Discord diagnostics | Tests saved token or `DISCORD_BOT_TOKEN` against Discord REST and verifies configured channel access without returning secrets. |
 | Alert parser | Parses buy/open, sell/trim/close, and average-down option alerts from plain text and embed text. |
 | Market capture | Imports option and stock price CSVs, optionally enriches with yfinance, snapshots alert-time option and stock prices, and calculates drift. |
-| Consolidation replay | Publishes joined replay events for Consolidation and writes JSONL test-run manifests. |
-| Control panel | React/Vite dashboard for replay, simulated handoffs, recorder setup, imports, exports, Consolidation replay, positions, and event tape. |
+| Sentinel Echo replay | Publishes joined replay events for Sentinel Echo and writes JSONL test-run manifests. |
+| Control panel | React/Vite dashboard for replay, simulated handoffs, recorder setup, imports, exports, Sentinel Echo replay, positions, and event tape. |
 | Windows launcher | Starts FastAPI, optionally rebuilds UI, opens a dedicated browser profile, and stops the process when the browser closes. |
 
 ## Architecture
@@ -54,7 +54,7 @@ C:\Users\Lite OS\Documents\Codex\2026-06-12\c-users-lite-os-openclaw-workspace\w
 CSV market data                  Discord alerts
       |                                |
       v                                v
-SimulationEngine              DiscordRecorder
+SentinelArchive              DiscordRecorder
       |                                |
       |                         RecordingStore
       |                         SQLite database
@@ -66,7 +66,7 @@ SimulationEngine              DiscordRecorder
                          v
               React control panel
                          |
-          Edge/Pulse/Consolidation clients
+          Edge/Pulse/Sentinel Echo clients
 ```
 
 The in-memory simulation state and the persistent recorder state are separate:
@@ -81,7 +81,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 npm install
 npm run build
-.\.venv\Scripts\python.exe -m uvicorn simulation_engine.main:app --host 127.0.0.1 --port 9200
+.\.venv\Scripts\python.exe -m uvicorn sentinel_archive.main:app --host 127.0.0.1 --port 9200
 ```
 
 Open:
@@ -92,11 +92,11 @@ http://127.0.0.1:9200
 
 ## Windows Beta Installer
 
-For non-technical beta testers, download and run `SentinelSimulationEngine-Setup-<version>.exe` from the Windows release artifact.
+For non-technical beta testers, download and run `SentinelArchive-Setup-<version>.exe` from the Windows release artifact.
 
-After installation, double-click **Sentinel Simulation Engine** from the Desktop or Start Menu. The installed launcher downloads missing runtime dependencies on first launch, including the Microsoft Visual C++ Runtime when Windows does not already have it. The installed beta build runs the packaged FastAPI app and serves the bundled control panel from the same local port.
+After installation, double-click **Sentinel Archive** from the Desktop or Start Menu. The installed launcher downloads missing runtime dependencies on first launch, including the Microsoft Visual C++ Runtime when Windows does not already have it. The installed beta build runs the packaged FastAPI app and serves the bundled control panel from the same local port.
 
-Installed beta testers do not need to install Python, Node.js, npm, or Vite. If startup fails, send a screenshot of the launcher window and the Desktop log file named `Sentinel-Simulation-Engine.log`.
+Installed beta testers do not need to install Python, Node.js, npm, or Vite. If startup fails, send a screenshot of the launcher window and the Desktop log file named `Sentinel-Archive.log`.
 
 Default installed URLs:
 
@@ -108,7 +108,7 @@ Default installed URLs:
 ## Windows Launcher
 
 ```powershell
-.\Launch-Sentinel-Simulation-Engine.ps1
+.\Launch-Sentinel-Archive.ps1
 ```
 
 Useful flags:
@@ -129,7 +129,7 @@ The launcher:
 3. Installs dependencies when requested or missing.
 4. Builds the control panel when requested or when `dist/index.html` is missing.
 5. Replaces an existing listener on the selected port.
-6. Starts `uvicorn simulation_engine.main:app`.
+6. Starts `uvicorn sentinel_archive.main:app`.
 7. Waits for `/api/health`.
 8. Opens a dedicated Edge or Chrome app window unless `-NoBrowser` is set.
 9. Stops the server when the dedicated browser closes.
@@ -152,7 +152,7 @@ chmod +x install-macos.sh
 ./install-macos.sh
 ```
 
-After installation, double-click `Sentinel Simulation Engine.command` on the Desktop. Logs are written to `~/Desktop/Sentinel-Simulation-Engine.log`.
+After installation, double-click `Sentinel Archive.command` on the Desktop. Logs are written to `~/Desktop/Sentinel-Archive.log`.
 
 Manual launch options:
 
@@ -167,6 +167,8 @@ Manual launch options:
 | Variable | Purpose |
 | --- | --- |
 | `DISCORD_BOT_TOKEN` | Optional fallback Discord token when no saved token exists. |
+| `SIMULATION_EVENT_BUS_SECRET` | Required shared secret for `/api/bus/events`; clients must send it in `X-Simulation-Event-Bus-Secret`. The configured value must be non-placeholder and at least 32 characters. |
+| `BOT_EVENT_BUS_DIR` | Optional local directory for JSONL cross-bot event records. |
 | `PULSE_EDGE_API_KEY` | Not required by this app; Pulse-compatible routes use the built-in local key below. |
 
 Pulse-compatible routes require:
@@ -226,6 +228,37 @@ Behavior:
 - `close` becomes the current price.
 - `high` and `low` drive stop-loss, take-profit, and trailing-stop rules.
 
+### Paper Burn-In Automation
+
+Run the broker-safe burn-in evidence harness:
+
+```bash
+python -m sentinel_archive.paper_burnin --output-dir outputs
+```
+
+With operator-supplied Alpaca paper credentials, run the explicit broker-paper
+drill:
+
+```bash
+python -m sentinel_archive.paper_burnin --run-broker-paper --allow-paper-orders --output-dir outputs
+```
+
+With a local Alpaca MCP server already running in paper mode, run the same
+order/cancel/rejection evidence through MCP:
+
+```bash
+python -m sentinel_archive.paper_burnin --run-alpaca-mcp --allow-paper-orders --alpaca-mcp-url http://127.0.0.1:8765/mcp --output-dir outputs
+```
+
+The harness runs simulator-backed checks for bot lifecycle, paper buy fills,
+partial fills, duplicate idempotency, low-confidence rejection, stop-buying,
+trailing-stop exit, restart/reload continuation, and live-mode rejection. Broker
+paper-account drills fail closed until operator-provided paper credentials,
+Pulse/Edge targets, and signoff are present. It does not place broker orders by
+default; the broker-paper and MCP flags submit only a tiny non-marketable paper
+limit order, cancel it, submit a controlled invalid order, and record
+reconciliation evidence without storing credentials.
+
 ### Discord Recorder
 
 Controls Discord capture and parser testing.
@@ -279,16 +312,16 @@ Export types:
 | `alerts` | Discord metadata plus parser fields. |
 | `joined` | Alert rows plus market snapshot and price drift columns. |
 
-### Consolidation Replay
+### Sentinel Echo Replay
 
-The UI can fetch the Consolidation replay feed and write JSONL test-run manifests.
+The UI can fetch the Sentinel Echo replay feed and write JSONL test-run manifests.
 
 | Control | Function |
 | --- | --- |
 | Channel | Optional channel filter. |
 | Since | Optional ISO timestamp cursor. |
-| Events | Fetches `/api/consolidation/replay/events`. |
-| JSONL | Writes a recorded replay manifest through `/api/consolidation/test-runs`. |
+| Events | Fetches `/api/sentinel-echo/replay/events`. |
+| JSONL | Writes a recorded replay manifest through `/api/sentinel-echo/test-runs`. |
 
 ### Playback
 
@@ -511,6 +544,17 @@ UNDERLYING|YYYY-MM-DD|STRIKE|PUT
 
 Unparsed messages are still stored for parser improvement.
 
+Golden parser cases live in `tests/fixtures/alert_parser_golden.json` and are
+verified by:
+
+```bash
+python -m pytest tests/test_alert_parser_golden.py
+```
+
+Add new analyst alert formats to that corpus before changing parser behavior, so
+replay consumers get deterministic expected fields for buy, sell, close,
+average-down, and unparsed messages.
+
 ### Market Snapshot And Drift
 
 When a parsed alert has an option contract:
@@ -536,12 +580,12 @@ or
 abs(price_drift_pct) >= drift_percent_threshold
 ```
 
-## Consolidation Test Feed
+## Sentinel Echo Test Feed
 
-The engine publishes a stable replay contract for Consolidation:
+The engine publishes a stable replay contract for Sentinel Echo:
 
 ```text
-GET /api/consolidation/replay/events
+GET /api/sentinel-echo/replay/events
 ```
 
 Query parameters:
@@ -557,8 +601,12 @@ Response contract:
 
 ```json
 {
-  "contract_version": "simulation.consolidation.replay.v1",
+  "contract_version": "simulation.sentinel-echo.replay.v1",
+  "mode": "simulation",
+  "execution": "none",
   "event_count": 1,
+  "manifest_hash_algorithm": "sha256",
+  "manifest_sha256": "64-character lowercase hex digest of the JSONL replay events",
   "filters": {
     "channel_id": null,
     "channel_ids": ["123", "456"],
@@ -586,14 +634,14 @@ Response contract:
 Write a JSONL test-run manifest:
 
 ```text
-POST /api/consolidation/test-runs
+POST /api/sentinel-echo/test-runs
 ```
 
 Request:
 
 ```json
 {
-  "name": "Consolidation smoke",
+  "name": "Sentinel Echo smoke",
   "channel_ids": ["123", "456"],
   "since": null,
   "limit": 1000
@@ -605,10 +653,12 @@ Request:
 The manifest is written under:
 
 ```text
-data/recordings/YYYY-MM-DD/consolidation-test-runs/
+data/recordings/YYYY-MM-DD/sentinel-echo-test-runs/
 ```
 
 This is still recorder-only. It does not trade.
+
+The `manifest_sha256` returned by `/api/sentinel-echo/replay/events` is computed from the same JSONL event bytes written by `/api/sentinel-echo/test-runs`. Store that digest with any replay acceptance result so downstream bots can prove they tested the exact replay input.
 
 ## API Reference
 
@@ -638,6 +688,15 @@ All paths below are prefixed by `/api`.
 | POST | `/simulation/replay/step` | Advance one timestamp batch. |
 | POST | `/simulation/replay/stop` | Stop replay. |
 | POST | `/simulation/handoff` | Native handoff without API key. |
+
+### Cross-Bot Event Bus
+
+These routes are for local replay, Discord observation, and test-run event exchange. They are not order-entry routes and fail closed unless `SIMULATION_EVENT_BUS_SECRET` is configured as a non-placeholder value of at least 32 characters.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/bus/events` | Read recent local simulation events. Requires `X-Simulation-Event-Bus-Secret`. |
+| POST | `/bus/events` | Publish a local simulation event. Requires `X-Simulation-Event-Bus-Secret`. |
 
 ### Edge-Compatible Facade
 
@@ -695,7 +754,7 @@ Legacy decision mapping:
 
 ### Recorder Data
 
-Message, alert, replay, export, and Consolidation endpoints accept `channel_id` for one channel or `channel_ids` for a comma-separated channel set.
+Message, alert, replay, export, and Sentinel Echo endpoints accept `channel_id` for one channel or `channel_ids` for a comma-separated channel set.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -712,24 +771,24 @@ Message, alert, replay, export, and Consolidation endpoints accept `channel_id` 
 | GET | `/recordings/exports` | List export records. |
 | GET | `/replay/events` | Generic chronological truth stream. |
 
-### Consolidation
+### Sentinel Echo
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/consolidation/replay/events` | Joined replay event stream for Consolidation. |
-| POST | `/consolidation/test-runs` | Write JSONL replay test-run manifest. |
+| GET | `/sentinel-echo/replay/events` | Joined replay event stream for Sentinel Echo. |
+| POST | `/sentinel-echo/test-runs` | Write JSONL replay test-run manifest. |
 
 ## Data Files
 
 | Path | Purpose |
 | --- | --- |
-| `data/simulation_engine.sqlite3` | Recorder SQLite database. |
+| `data/sentinel_archive.sqlite3` | Recorder SQLite database. |
 | `data/recordings/` | CSV and JSONL exports. |
 | `dist/` | Built React control panel. |
 | `.venv/` | Local Python environment. |
 | `node_modules/` | Frontend dependencies. |
 
-## Tandem Suite Integration
+## Sentinel Core Integration
 
 Point both bot URLs at this app:
 
@@ -741,36 +800,36 @@ $env:PULSE_EDGE_API_KEY = "local-sim-key"
 
 In this mode:
 
-- Tandem reads Edge-style status from `/api/live`, `/api/ready`, `/api/automation`, `/api/decisions`, and `/api/pulse/*`.
-- Tandem reads Pulse-style status from `/api/health` and `/api/edge/*`.
+- Sentinel Core reads Edge-style status from `/api/live`, `/api/ready`, `/api/automation`, `/api/decisions`, and `/api/pulse/*`.
+- Sentinel Core reads Pulse-style status from `/api/health` and `/api/edge/*`.
 - Both facades use the same simulation state.
 
-## Consolidation Integration
+## Sentinel Echo Integration
 
-In Consolidation, set:
+In Sentinel Echo, set:
 
 ```powershell
-$env:SIMULATION_ENGINE_REPLAY_URL = "http://127.0.0.1:9200/api/consolidation/replay/events"
+$env:SENTINEL_ARCHIVE_REPLAY_URL = "http://127.0.0.1:9200/api/sentinel-echo/replay/events"
 ```
 
-Then Consolidation can call:
+Then Sentinel Echo can call:
 
 ```text
-POST /api/simulation-engine/replay-preview
+POST /api/sentinel-archive/replay-preview
 ```
 
-to run recorded engine events through Consolidation parser/source-policy logic without inserting alerts or sending broker orders.
+to run recorded engine events through Sentinel Echo parser/source-policy logic without inserting alerts or sending broker orders.
 
 ## Common Workflows
 
-### Make Tandem Show A Simulated Position
+### Make Sentinel Core Show A Simulated Position
 
 1. Start this engine on port `9200`.
 2. Import OHLCV CSV with at least one `SPY` row.
 3. Select the replay session.
 4. Press `Start` or `Step` until `Current Prices` includes `SPY`.
 5. Send a `buy` from Handoff Composer.
-6. Tandem can read the resulting position from Pulse and Edge facade endpoints.
+6. Sentinel Core can read the resulting position from Pulse and Edge facade endpoints.
 
 ### Test A Trailing Stop
 
@@ -781,21 +840,21 @@ to run recorded engine events through Consolidation parser/source-policy logic w
 5. Continue replay.
 6. The engine closes the position when replay low crosses the trailing threshold.
 
-### Build A Consolidation Test Dataset
+### Build A Sentinel Echo Test Dataset
 
 1. Start a capture session.
 2. Import or listen to Discord alert messages.
 3. Import option price CSV for matching contracts.
 4. Review recorded alerts and drift.
 5. Export `joined` CSV for analysis.
-6. Use the Consolidation Replay panel to write JSONL.
-7. Point Consolidation at `/api/consolidation/replay/events`.
+6. Use the Sentinel Echo Replay panel to write JSONL.
+7. Point Sentinel Echo at `/api/sentinel-echo/replay/events`.
 
 ## Project Structure
 
 ```text
-Simulation-Engine/
-  simulation_engine/
+Sentinel-Archive/
+  sentinel_archive/
     api.py                  FastAPI app and Edge/Pulse facades
     core.py                 replay and simulated account engine
     csv_import.py           OHLCV CSV parser
@@ -804,14 +863,14 @@ Simulation-Engine/
     discord_recorder.py     Discord listener and recorder orchestration
     discord_diagnostics.py  Discord REST diagnostics
     market_recorder.py      stock/option bar import, snapshots, drift
-    recorder_api.py         recorder and Consolidation replay routes
+    recorder_api.py         recorder and Sentinel Echo replay routes
     recording_store.py      SQLite persistence and exports
   frontend/src/
     App.tsx                 control panel
     api.ts                  typed API client
     styles.css              dashboard styles
   tests/                    backend and recorder tests
-  Launch-Sentinel-Simulation-Engine.ps1
+  Launch-Sentinel-Archive.ps1
 ```
 
 ## Verification
@@ -819,7 +878,7 @@ Simulation-Engine/
 ```powershell
 .\.venv\Scripts\python.exe -m pytest
 npm run build
-.\Launch-Sentinel-Simulation-Engine.ps1 -SmokeTest
+.\Launch-Sentinel-Archive.ps1 -SmokeTest
 python -m unittest tests.test_launcher_lifecycle_static -v
 ```
 
@@ -879,4 +938,4 @@ Then restart uvicorn or the launcher.
 - The Discord recorder is not a broker, paper trader, or portfolio simulator.
 - yfinance quote enrichment depends on network availability and third-party data behavior.
 - The parser is intentionally conservative; unsupported analyst formats are stored as unparsed.
-- Consolidation JSONL manifests are replay inputs, not execution records.
+- Sentinel Echo JSONL manifests are replay inputs, not execution records.

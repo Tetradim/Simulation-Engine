@@ -142,7 +142,7 @@ export type RecordingSession = {
   notes: string;
 };
 
-export type ConsolidationReplayEvent = {
+export type SentinelEchoReplayEvent = {
   event_id: string;
   type: 'discord_alert';
   timestamp: string;
@@ -150,16 +150,22 @@ export type ConsolidationReplayEvent = {
   payload: Record<string, unknown>;
 };
 
-export type ConsolidationReplayResponse = {
+export type SentinelEchoReplayResponse = {
   contract_version: string;
+  mode: string;
+  execution: string;
   event_count: number;
+  manifest_hash_algorithm: string;
+  manifest_sha256: string;
   filters: Record<string, unknown>;
   next_cursor?: string | null;
-  events: ConsolidationReplayEvent[];
+  events: SentinelEchoReplayEvent[];
 };
 
-export type ConsolidationTestRun = {
+export type SentinelEchoTestRun = {
   contract_version: string;
+  mode: string;
+  execution: string;
   run_id: string;
   name: string;
   created_at: string;
@@ -167,6 +173,8 @@ export type ConsolidationTestRun = {
   replay_contract_version: string;
   event_count: number;
   file_path: string;
+  manifest_hash_algorithm: string;
+  manifest_sha256: string;
   replay_url: string;
   filters: Record<string, unknown>;
 };
@@ -272,10 +280,10 @@ export const api = {
       body: JSON.stringify({ channel_ids: channelIds ?? [], export_type: exportType }),
     }),
   replayEvents: () => requestJson<{ events: Array<Record<string, unknown>> }>('/api/replay/events?limit=100'),
-  consolidationReplayEvents: (channelIds?: string[], since?: string, limit = 100) =>
-    requestJson<ConsolidationReplayResponse>(`/api/consolidation/replay/events${queryString({ channel_ids: channelIdsValue(channelIds), since, limit })}`),
-  createConsolidationTestRun: (name: string, channelIds?: string[], since?: string, limit = 1000) =>
-    requestJson<ConsolidationTestRun>('/api/consolidation/test-runs', {
+  sentinelEchoReplayEvents: (channelIds?: string[], since?: string, limit = 100) =>
+    requestJson<SentinelEchoReplayResponse>(`/api/sentinel-echo/replay/events${queryString({ channel_ids: channelIdsValue(channelIds), since, limit })}`),
+  createSentinelEchoTestRun: (name: string, channelIds?: string[], since?: string, limit = 1000) =>
+    requestJson<SentinelEchoTestRun>('/api/sentinel-echo/test-runs', {
       method: 'POST',
       body: JSON.stringify({ name, channel_ids: channelIds ?? [], since: since || null, limit }),
     }),

@@ -77,7 +77,7 @@ event_bus = EventBusStore()
 def publish_event(
     event_type: str,
     *,
-    source_bot: str = "simulation-engine",
+    source_bot: str = "sentinel-archive",
     payload: dict[str, Any] | None = None,
     source_instance: str = "local",
     correlation_id: str | None = None,

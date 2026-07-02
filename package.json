@@ -1,12 +1,12 @@
 {
-  "name": "sentinel-simulation-engine",
+  "name": "sentinel-archive",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n api,ui \".venv\\\\Scripts\\\\python.exe -m uvicorn simulation_engine.main:app --host 127.0.0.1 --port 9200 --reload\" \"vite --config frontend/vite.config.ts --host 127.0.0.1 --port 9201\"",
+    "dev": "concurrently -k -n api,ui \".venv\\\\Scripts\\\\python.exe -m uvicorn sentinel_archive.main:app --host 127.0.0.1 --port 9200 --reload\" \"vite --config frontend/vite.config.ts --host 127.0.0.1 --port 9201\"",
     "build": "vite build --config frontend/vite.config.ts",
-    "preview": ".venv\\\\Scripts\\\\python.exe -m uvicorn simulation_engine.main:app --host 127.0.0.1 --port 9200"
+    "preview": ".venv\\\\Scripts\\\\python.exe -m uvicorn sentinel_archive.main:app --host 127.0.0.1 --port 9200"
   },
   "dependencies": {
     "lucide-react": "^1.18.0",

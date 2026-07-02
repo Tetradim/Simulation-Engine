@@ -1,6 +1,6 @@
 import pytest
 
-from simulation_engine.csv_import import parse_ohlcv_csv
+from sentinel_archive.csv_import import parse_ohlcv_csv
 
 
 def test_parse_ohlcv_csv_normalizes_symbols_and_numbers():

@@ -1,8 +1,8 @@
-# Simulation Engine Implementation Plan
+# Sentinel Archive Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a standalone market replay and Edge/Pulse-compatible simulation engine with a web control panel.
+**Goal:** Build a standalone market replay and Edge/Pulse-compatible Sentinel Archive with a web control panel.
 
 **Architecture:** FastAPI owns the deterministic simulation state and serves Edge/Pulse-compatible REST contracts. React/Vite provides an operator panel for importing bars, adjusting assumptions, controlling playback, sending handoffs, and inspecting simulated state.
 
@@ -12,15 +12,15 @@
 
 ## File Structure
 
-- `simulation_engine/models.py`: Pydantic models for bars, config, positions, handoffs, and snapshots.
-- `simulation_engine/core.py`: Replay clock, execution model, account state, idempotent handoff processing, and event log.
-- `simulation_engine/csv_import.py`: CSV parser for user-supplied OHLCV market-day data.
-- `simulation_engine/contracts.py`: Edge/Pulse handoff schema document.
-- `simulation_engine/api.py`: FastAPI routes for native simulation control plus Edge/Pulse compatibility.
-- `simulation_engine/main.py`: Uvicorn entry point.
+- `sentinel_archive/models.py`: Pydantic models for bars, config, positions, handoffs, and snapshots.
+- `sentinel_archive/core.py`: Replay clock, execution model, account state, idempotent handoff processing, and event log.
+- `sentinel_archive/csv_import.py`: CSV parser for user-supplied OHLCV market-day data.
+- `sentinel_archive/contracts.py`: Edge/Pulse handoff schema document.
+- `sentinel_archive/api.py`: FastAPI routes for native simulation control plus Edge/Pulse compatibility.
+- `sentinel_archive/main.py`: Uvicorn entry point.
 - `tests/`: Behavioral tests written before implementation.
 - `frontend/src/`: React control panel.
-- `README.md`: Setup, launch, API, Tandem integration, replay data format.
+- `README.md`: Setup, launch, API, Sentinel Core integration, replay data format.
 
 ## Tasks
 

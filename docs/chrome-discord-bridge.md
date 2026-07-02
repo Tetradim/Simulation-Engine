@@ -1,6 +1,6 @@
 # Chrome Discord Bridge
 
-Simulation Engine accepts local Chrome bridge traffic at:
+Sentinel Archive accepts local Chrome bridge traffic at:
 
 ```text
 POST /api/discord/chrome-bridge/message

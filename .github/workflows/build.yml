@@ -1,4 +1,4 @@
-name: Build Sentinel Simulation Engine Windows Installer
+name: Build Sentinel Archive Windows Installer
 
 on:
   push:
@@ -71,7 +71,7 @@ jobs:
           Remove-Item dist -Recurse -Force -ErrorAction SilentlyContinue
           python -m PyInstaller `
             --clean `
-            --name SentinelSimulationEngine `
+            --name SentinelArchive `
             --onedir `
             --console `
             --hidden-import uvicorn `
@@ -88,38 +88,38 @@ jobs:
 
       - name: Copy app assets into package
         run: |
-          $package = "dist\SentinelSimulationEngine"
+          $package = "dist\SentinelArchive"
           Copy-Item "frontend-dist" -Destination "$package\dist" -Recurse -Force
-          Copy-Item "Launch-Sentinel-Simulation-Engine.bat" -Destination $package -Force
-          Copy-Item "Launch-Sentinel-Simulation-Engine.ps1" -Destination $package -Force
+          Copy-Item "Launch-Sentinel-Archive.bat" -Destination $package -Force
+          Copy-Item "Launch-Sentinel-Archive.ps1" -Destination $package -Force
 
       - name: Verify package
         run: |
-          if (!(Test-Path "dist\SentinelSimulationEngine\SentinelSimulationEngine.exe")) {
-            Write-Host "ERROR: SentinelSimulationEngine.exe not found"
+          if (!(Test-Path "dist\SentinelArchive\SentinelArchive.exe")) {
+            Write-Host "ERROR: SentinelArchive.exe not found"
             exit 1
           }
-          if (!(Test-Path "dist\SentinelSimulationEngine\dist\index.html")) {
+          if (!(Test-Path "dist\SentinelArchive\dist\index.html")) {
             Write-Host "ERROR: packaged dist\index.html not found"
             exit 1
           }
-          if (!(Test-Path "dist\SentinelSimulationEngine\Launch-Sentinel-Simulation-Engine.bat")) {
-            Write-Host "ERROR: Launch-Sentinel-Simulation-Engine.bat not found"
+          if (!(Test-Path "dist\SentinelArchive\Launch-Sentinel-Archive.bat")) {
+            Write-Host "ERROR: Launch-Sentinel-Archive.bat not found"
             exit 1
           }
-          if (!(Test-Path "dist\SentinelSimulationEngine\Launch-Sentinel-Simulation-Engine.ps1")) {
-            Write-Host "ERROR: Launch-Sentinel-Simulation-Engine.ps1 not found"
+          if (!(Test-Path "dist\SentinelArchive\Launch-Sentinel-Archive.ps1")) {
+            Write-Host "ERROR: Launch-Sentinel-Archive.ps1 not found"
             exit 1
           }
 
       - name: Create Inno Setup script
         run: |
           $iss = @"
-          #define MyAppName "Sentinel Simulation Engine"
+          #define MyAppName "Sentinel Archive"
           #define MyAppVersion "${{ env.VERSION }}"
           #define MyAppPublisher "Tetradim / SignalForge Lab"
-          #define MyAppURL "https://github.com/Tetradim/Simulation-Engine"
-          #define MyAppExeName "SentinelSimulationEngine.exe"
+          #define MyAppURL "https://github.com/Tetradim/Sentinel-Archive"
+          #define MyAppExeName "SentinelArchive.exe"
 
           [Setup]
           AppId={{D6C26C49-9905-4017-A251-712D99FA8F27}
@@ -133,7 +133,7 @@ jobs:
           DefaultDirName={autopf}\{#MyAppName}
           DefaultGroupName={#MyAppName}
           OutputDir=installer-dist
-          OutputBaseFilename=SentinelSimulationEngine-Setup-{#MyAppVersion}
+          OutputBaseFilename=SentinelArchive-Setup-{#MyAppVersion}
           UninstallDisplayName={#MyAppName}
           UninstallDisplayIcon={app}\{#MyAppExeName}
           Compression=lzma2
@@ -149,22 +149,22 @@ jobs:
 
           [Tasks]
           Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkedonce
-          Name: "launchapp"; Description: "Launch Sentinel Simulation Engine after install"; GroupDescription: "Startup"; Flags: checkedonce
+          Name: "launchapp"; Description: "Launch Sentinel Archive after install"; GroupDescription: "Startup"; Flags: checkedonce
 
           [Files]
-          Source: "dist\SentinelSimulationEngine\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+          Source: "dist\SentinelArchive\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
           [Icons]
-          Name: "{group}\{#MyAppName}"; Filename: "{app}\Launch-Sentinel-Simulation-Engine.bat"; WorkingDir: "{app}"
+          Name: "{group}\{#MyAppName}"; Filename: "{app}\Launch-Sentinel-Archive.bat"; WorkingDir: "{app}"
           Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
-          Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\Launch-Sentinel-Simulation-Engine.bat"; WorkingDir: "{app}"; Tasks: desktopicon
+          Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\Launch-Sentinel-Archive.bat"; WorkingDir: "{app}"; Tasks: desktopicon
 
           [Run]
-          Filename: "{app}\Launch-Sentinel-Simulation-Engine.bat"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent shellexec; Tasks: launchapp; WorkingDir: "{app}"
+          Filename: "{app}\Launch-Sentinel-Archive.bat"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent shellexec; Tasks: launchapp; WorkingDir: "{app}"
 
           [UninstallDelete]
           Type: filesandordirs; Name: "{app}"
-          Type: files; Name: "{userdesktop}\Sentinel-Simulation-Engine.log"
+          Type: files; Name: "{userdesktop}\Sentinel-Archive.log"
 
           [Code]
           procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
@@ -173,7 +173,7 @@ jobs:
           begin
             if CurUninstallStep = usUninstall then
             begin
-              Exec('taskkill', '/F /IM SentinelSimulationEngine.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+              Exec('taskkill', '/F /IM SentinelArchive.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
             end;
           end;
           "@
@@ -187,8 +187,8 @@ jobs:
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: SentinelSimulationEngine-Setup-${{ env.VERSION }}
-          path: installer-dist/SentinelSimulationEngine-Setup*.exe
+          name: SentinelArchive-Setup-${{ env.VERSION }}
+          path: installer-dist/SentinelArchive-Setup*.exe
           if-no-files-found: error
           retention-days: 90
 
@@ -201,14 +201,14 @@ jobs:
       - name: Download installer
         uses: actions/download-artifact@v4
         with:
-          pattern: SentinelSimulationEngine-Setup-*
+          pattern: SentinelArchive-Setup-*
           path: artifacts
           merge-multiple: true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: artifacts/SentinelSimulationEngine-Setup*.exe
+          files: artifacts/SentinelArchive-Setup*.exe
           draft: false
           prerelease: ${{ contains(github.ref, 'beta') }}
           generate_release_notes: true

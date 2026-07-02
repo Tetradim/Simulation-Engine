@@ -1,10 +1,10 @@
 import asyncio
 import types
 
-from simulation_engine.discord_recorder import DiscordRecorder
-from simulation_engine.market_recorder import parse_option_csv
-from simulation_engine.recorder_models import DiscordSource, RecorderSettings
-from simulation_engine.recording_store import RecordingStore
+from sentinel_archive.discord_recorder import DiscordRecorder
+from sentinel_archive.market_recorder import parse_option_csv
+from sentinel_archive.recorder_models import DiscordSource, RecorderSettings
+from sentinel_archive.recording_store import RecordingStore
 
 
 def fake_message(content, channel_id="123", author_id="a1", message_id="m1"):

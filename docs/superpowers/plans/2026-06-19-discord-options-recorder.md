@@ -12,14 +12,14 @@
 
 ## File Structure
 
-- Create `simulation_engine/recorder_models.py`: Pydantic models for recorder settings, sources, messages, parsed alerts, market bars, snapshots, drift events, exports, and status.
-- Create `simulation_engine/recording_store.py`: async SQLite schema, migrations, CRUD, masking helpers, and export metadata persistence.
-- Create `simulation_engine/alert_parser.py`: Consolidation-derived message and embed text normalization plus options alert parser.
-- Create `simulation_engine/market_recorder.py`: stock/options CSV parsers, contract key normalization, latest-at-or-before lookup, yfinance live quote lookup, and drift calculation.
-- Create `simulation_engine/discord_recorder.py`: discord.py lifecycle, channel/user filters, message capture, parser invocation, snapshot creation, and status.
-- Create `simulation_engine/recorder_api.py`: FastAPI routes for recorder settings, Discord start/stop/test/status, parser preview, CSV imports, recordings query, replay events, and exports.
-- Modify `simulation_engine/api.py`: initialize recorder store/service in lifespan and mount recorder routes.
-- Modify `simulation_engine/main.py` only if app creation signature must pass a data path.
+- Create `sentinel_archive/recorder_models.py`: Pydantic models for recorder settings, sources, messages, parsed alerts, market bars, snapshots, drift events, exports, and status.
+- Create `sentinel_archive/recording_store.py`: async SQLite schema, migrations, CRUD, masking helpers, and export metadata persistence.
+- Create `sentinel_archive/alert_parser.py`: Sentinel Echo-derived message and embed text normalization plus options alert parser.
+- Create `sentinel_archive/market_recorder.py`: stock/options CSV parsers, contract key normalization, latest-at-or-before lookup, yfinance live quote lookup, and drift calculation.
+- Create `sentinel_archive/discord_recorder.py`: discord.py lifecycle, channel/user filters, message capture, parser invocation, snapshot creation, and status.
+- Create `sentinel_archive/recorder_api.py`: FastAPI routes for recorder settings, Discord start/stop/test/status, parser preview, CSV imports, recordings query, replay events, and exports.
+- Modify `sentinel_archive/api.py`: initialize recorder store/service in lifespan and mount recorder routes.
+- Modify `sentinel_archive/main.py` only if app creation signature must pass a data path.
 - Modify `requirements.txt`: add `aiosqlite`, `discord.py`, `yfinance`, and `pandas`.
 - Modify `frontend/src/api.ts`: add recorder API types and client methods.
 - Modify `frontend/src/App.tsx`: add recorder panels without calling execution APIs.
@@ -74,7 +74,7 @@ Expected: commit succeeds.
 ### Task 2: Recorder Models
 
 **Files:**
-- Create: `simulation_engine/recorder_models.py`
+- Create: `sentinel_archive/recorder_models.py`
 - Test: `tests/test_recording_store.py`
 
 - [ ] **Step 1: Write model smoke test**
@@ -82,7 +82,7 @@ Expected: commit succeeds.
 Create `tests/test_recording_store.py` with:
 
 ```python
-from simulation_engine.recorder_models import RecorderSettings, ParsedAlert, normalize_contract_key
+from sentinel_archive.recorder_models import RecorderSettings, ParsedAlert, normalize_contract_key
 
 
 def test_recorder_settings_masks_token():
@@ -109,11 +109,11 @@ Run:
 .\.venv\Scripts\python.exe -m pytest tests/test_recording_store.py -q
 ```
 
-Expected: fail because `simulation_engine.recorder_models` is missing.
+Expected: fail because `sentinel_archive.recorder_models` is missing.
 
 - [ ] **Step 3: Implement recorder models**
 
-Create `simulation_engine/recorder_models.py`:
+Create `sentinel_archive/recorder_models.py`:
 
 ```python
 from __future__ import annotations
@@ -224,7 +224,7 @@ class ParsedAlert(BaseModel):
     alert_price: float | None = None
     sell_percentage: float | None = None
     confidence: str = "none"
-    parser_profile: str = "consolidation_default"
+    parser_profile: str = "sentinel_echo_default"
     normalized: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("ticker", mode="before")
@@ -315,7 +315,7 @@ Expected: 3 passed.
 Run:
 
 ```powershell
-git add simulation_engine/recorder_models.py tests/test_recording_store.py
+git add sentinel_archive/recorder_models.py tests/test_recording_store.py
 git commit -m "Add recorder data models"
 ```
 
@@ -326,7 +326,7 @@ Expected: commit succeeds.
 ### Task 3: SQLite Recording Store
 
 **Files:**
-- Create: `simulation_engine/recording_store.py`
+- Create: `sentinel_archive/recording_store.py`
 - Modify: `tests/test_recording_store.py`
 
 - [ ] **Step 1: Add SQLite persistence tests**
@@ -336,8 +336,8 @@ Append to `tests/test_recording_store.py`:
 ```python
 import asyncio
 
-from simulation_engine.recording_store import RecordingStore
-from simulation_engine.recorder_models import DiscordMessageRecord, MarketBarRecord, ParsedAlert, RecorderSettings
+from sentinel_archive.recording_store import RecordingStore
+from sentinel_archive.recorder_models import DiscordMessageRecord, MarketBarRecord, ParsedAlert, RecorderSettings
 
 
 def test_store_persists_settings_and_masks_token(tmp_path):
@@ -401,7 +401,7 @@ Expected: fail because `recording_store.py` is missing.
 
 - [ ] **Step 3: Implement SQLite store**
 
-Create `simulation_engine/recording_store.py` with schema creation and CRUD:
+Create `sentinel_archive/recording_store.py` with schema creation and CRUD:
 
 ```python
 from __future__ import annotations
@@ -416,7 +416,7 @@ from .recorder_models import DiscordMessageRecord, MarketBarRecord, ParsedAlert,
 
 
 class RecordingStore:
-    def __init__(self, db_path: str | Path = "data/simulation_engine.sqlite3"):
+    def __init__(self, db_path: str | Path = "data/sentinel_archive.sqlite3"):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -563,7 +563,7 @@ Expected: all tests in `test_recording_store.py` pass.
 Run:
 
 ```powershell
-git add simulation_engine/recording_store.py tests/test_recording_store.py
+git add sentinel_archive/recording_store.py tests/test_recording_store.py
 git commit -m "Add SQLite recorder store"
 ```
 
@@ -574,7 +574,7 @@ Expected: commit succeeds.
 ### Task 4: Alert Parser
 
 **Files:**
-- Create: `simulation_engine/alert_parser.py`
+- Create: `sentinel_archive/alert_parser.py`
 - Test: `tests/test_alert_parser.py`
 
 - [ ] **Step 1: Write parser tests**
@@ -584,7 +584,7 @@ Create `tests/test_alert_parser.py`:
 ```python
 import types
 
-from simulation_engine.alert_parser import build_discord_alert_text, parse_alert_text
+from sentinel_archive.alert_parser import build_discord_alert_text, parse_alert_text
 
 
 def test_common_bto_alert_parses():
@@ -636,7 +636,7 @@ Expected: fail because `alert_parser.py` is missing.
 
 - [ ] **Step 3: Implement parser**
 
-Create `simulation_engine/alert_parser.py`:
+Create `sentinel_archive/alert_parser.py`:
 
 ```python
 from __future__ import annotations
@@ -849,7 +849,7 @@ Expected: 4 passed.
 Run:
 
 ```powershell
-git add simulation_engine/alert_parser.py tests/test_alert_parser.py
+git add sentinel_archive/alert_parser.py tests/test_alert_parser.py
 git commit -m "Add options alert parser"
 ```
 
@@ -860,8 +860,8 @@ Expected: commit succeeds.
 ### Task 5: Market Recorder
 
 **Files:**
-- Create: `simulation_engine/market_recorder.py`
-- Modify: `simulation_engine/recording_store.py`
+- Create: `sentinel_archive/market_recorder.py`
+- Modify: `sentinel_archive/recording_store.py`
 - Test: `tests/test_market_recorder.py`
 
 - [ ] **Step 1: Write market recorder tests**
@@ -871,9 +871,9 @@ Create `tests/test_market_recorder.py`:
 ```python
 import asyncio
 
-from simulation_engine.market_recorder import calculate_price_drift, parse_option_csv
-from simulation_engine.recorder_models import ParsedAlert, RecorderSettings
-from simulation_engine.recording_store import RecordingStore
+from sentinel_archive.market_recorder import calculate_price_drift, parse_option_csv
+from sentinel_archive.recorder_models import ParsedAlert, RecorderSettings
+from sentinel_archive.recording_store import RecordingStore
 
 
 def test_parse_option_csv_normalizes_contract_key():
@@ -918,7 +918,7 @@ Expected: fail because `market_recorder.py` and `latest_market_bar` are missing.
 
 - [ ] **Step 3: Implement CSV parsing and drift**
 
-Create `simulation_engine/market_recorder.py`:
+Create `sentinel_archive/market_recorder.py`:
 
 ```python
 from __future__ import annotations
@@ -1022,7 +1022,7 @@ def _optional_float(value: object) -> float | None:
 
 - [ ] **Step 4: Add latest market lookup to store**
 
-Add this method to `RecordingStore` in `simulation_engine/recording_store.py`:
+Add this method to `RecordingStore` in `sentinel_archive/recording_store.py`:
 
 ```python
     async def latest_market_bar(self, contract_key: str, timestamp: str) -> dict | None:
@@ -1056,7 +1056,7 @@ Expected: 3 passed.
 Run:
 
 ```powershell
-git add simulation_engine/market_recorder.py simulation_engine/recording_store.py tests/test_market_recorder.py
+git add sentinel_archive/market_recorder.py sentinel_archive/recording_store.py tests/test_market_recorder.py
 git commit -m "Add market recorder CSV and drift logic"
 ```
 
@@ -1067,7 +1067,7 @@ Expected: commit succeeds.
 ### Task 6: Discord Recorder Service
 
 **Files:**
-- Create: `simulation_engine/discord_recorder.py`
+- Create: `sentinel_archive/discord_recorder.py`
 - Test: `tests/test_discord_recorder.py`
 
 - [ ] **Step 1: Write Discord service unit tests**
@@ -1078,9 +1078,9 @@ Create `tests/test_discord_recorder.py`:
 import asyncio
 import types
 
-from simulation_engine.discord_recorder import DiscordRecorder
-from simulation_engine.recording_store import RecordingStore
-from simulation_engine.recorder_models import RecorderSettings
+from sentinel_archive.discord_recorder import DiscordRecorder
+from sentinel_archive.recording_store import RecordingStore
+from sentinel_archive.recorder_models import RecorderSettings
 
 
 def fake_message(content, channel_id="123", author_id="a1"):
@@ -1133,7 +1133,7 @@ Expected: fail because `discord_recorder.py` is missing.
 
 - [ ] **Step 3: Implement recorder service**
 
-Create `simulation_engine/discord_recorder.py`:
+Create `sentinel_archive/discord_recorder.py`:
 
 ```python
 from __future__ import annotations
@@ -1223,7 +1223,7 @@ Expected: 2 passed.
 Run:
 
 ```powershell
-git add simulation_engine/discord_recorder.py tests/test_discord_recorder.py
+git add sentinel_archive/discord_recorder.py tests/test_discord_recorder.py
 git commit -m "Add Discord recorder service"
 ```
 
@@ -1234,8 +1234,8 @@ Expected: commit succeeds.
 ### Task 7: Recorder API
 
 **Files:**
-- Create: `simulation_engine/recorder_api.py`
-- Modify: `simulation_engine/api.py`
+- Create: `sentinel_archive/recorder_api.py`
+- Modify: `sentinel_archive/api.py`
 - Test: `tests/test_recorder_api.py`
 
 - [ ] **Step 1: Write route contract tests**
@@ -1245,7 +1245,7 @@ Create `tests/test_recorder_api.py`:
 ```python
 from fastapi.testclient import TestClient
 
-from simulation_engine.api import create_app
+from sentinel_archive.api import create_app
 
 
 def test_recorder_settings_masks_token(tmp_path):
@@ -1292,7 +1292,7 @@ Expected: fail because recorder routes are not mounted.
 
 - [ ] **Step 3: Implement recorder routes**
 
-Create `simulation_engine/recorder_api.py`:
+Create `sentinel_archive/recorder_api.py`:
 
 ```python
 from __future__ import annotations
@@ -1373,7 +1373,7 @@ def create_recorder_router(store: RecordingStore, recorder: DiscordRecorder) -> 
 
 - [ ] **Step 4: Mount routes and initialize store**
 
-Modify `simulation_engine/api.py`:
+Modify `sentinel_archive/api.py`:
 
 ```python
 from .discord_recorder import DiscordRecorder
@@ -1384,7 +1384,7 @@ from .recording_store import RecordingStore
 Change the app factory signature:
 
 ```python
-def create_app(engine: SimulationEngine | None = None, recorder_db_path: str | Path = "data/simulation_engine.sqlite3") -> FastAPI:
+def create_app(engine: SentinelArchive | None = None, recorder_db_path: str | Path = "data/sentinel_archive.sqlite3") -> FastAPI:
 ```
 
 After `engine_instance = ...`, add:
@@ -1421,7 +1421,7 @@ Expected: 3 passed.
 Run:
 
 ```powershell
-git add simulation_engine/api.py simulation_engine/recorder_api.py tests/test_recorder_api.py
+git add sentinel_archive/api.py sentinel_archive/recorder_api.py tests/test_recorder_api.py
 git commit -m "Add recorder API routes"
 ```
 
@@ -1622,7 +1622,7 @@ Add a `Discord Options Recorder` section to `README.md` explaining:
 
 The recorder captures Discord option alerts and market observations for later bot testing. It does not execute trades, simulate positions, or connect to brokers.
 
-Recorded data is stored in `data/simulation_engine.sqlite3`. Exports are written under `data/recordings/` with timestamped channel-aware paths.
+Recorded data is stored in `data/sentinel_archive.sqlite3`. Exports are written under `data/recordings/` with timestamped channel-aware paths.
 
 Required Discord setup:
 
@@ -1663,7 +1663,7 @@ Expected: build succeeds.
 Run:
 
 ```powershell
-.\Launch-Sentinel-Simulation-Engine.ps1 -SmokeTest
+.\Launch-Sentinel-Archive.ps1 -SmokeTest
 ```
 
 Expected: smoke test passes without starting a long-running server.

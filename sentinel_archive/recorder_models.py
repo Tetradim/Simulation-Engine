@@ -137,7 +137,7 @@ class ParsedAlert(BaseModel):
     alert_price: float | None = None
     sell_percentage: float | None = None
     confidence: str = "none"
-    parser_profile: str = "consolidation_default"
+    parser_profile: str = "sentinel_echo_default"
     normalized: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("ticker", mode="before")

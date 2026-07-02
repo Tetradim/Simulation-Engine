@@ -66,7 +66,7 @@ class DiscordConnectionDiagnostics:
     ) -> dict[str, Any]:
         import aiohttp
 
-        headers = {"Authorization": f"Bot {token}", "User-Agent": "Sentinel-Simulation-Engine"}
+        headers = {"Authorization": f"Bot {token}", "User-Agent": "Sentinel-Archive"}
         timeout = aiohttp.ClientTimeout(total=timeout_seconds)
         async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
             async with session.get(f"{DISCORD_API_BASE}/users/@me") as response:

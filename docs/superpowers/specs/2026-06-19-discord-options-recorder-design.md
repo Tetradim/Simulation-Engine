@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add a data-collection mode to the Sentinel Simulation Engine that records Discord option alerts, stock price action, and option price observations so functional bots such as Consolidation can later be tested against a recorded truth stream.
+Add a data-collection mode to the Sentinel Archive that records Discord option alerts, stock price action, and option price observations so functional bots such as Sentinel Echo can later be tested against a recorded truth stream.
 
 This feature is not a trading bot and must not place, paper-fill, or simulate orders from Discord alerts. Its job is to capture what happened, when it happened, and what prices were observable at that time.
 
@@ -25,15 +25,15 @@ Live market-data provider integration is included as an interface and UI/config 
 - No broker connections.
 - No live orders.
 - No simulated fills, positions, or account P/L for Discord alerts.
-- No replacement for Consolidation execution logic.
+- No replacement for Sentinel Echo execution logic.
 - No use of Discord user tokens. Only official bot tokens are supported.
 
 ## Architecture
 
-The existing Simulation Engine remains a FastAPI service with a React control panel. This feature adds four backend modules:
+The existing Sentinel Archive remains a FastAPI service with a React control panel. This feature adds four backend modules:
 
 - `discord_recorder.py`: owns Discord bot lifecycle, channel subscriptions, message extraction, and safe shutdown.
-- `alert_parser.py`: ports the stable Consolidation parser for options alerts and exposes parse metadata.
+- `alert_parser.py`: ports the stable Sentinel Echo parser for options alerts and exposes parse metadata.
 - `market_recorder.py`: imports stock/options CSV bars, stores live or replayed market observations, and resolves the latest known price for an alert timestamp.
 - `recording_store.py`: SQLite persistence layer for settings, Discord messages, parsed alerts, market snapshots, sessions, and exports.
 
@@ -64,7 +64,7 @@ CSV flow:
 SQLite is the source of truth on disk. Default path:
 
 ```text
-data/simulation_engine.sqlite3
+data/sentinel_archive.sqlite3
 ```
 
 Tables:
@@ -92,9 +92,9 @@ data/recordings/
 Export folders and filenames include date/time and channel identity:
 
 ```text
-data/recordings/2026-06-19/channel-123456789-consolidation-alerts/20260619-143012-alerts.csv
-data/recordings/2026-06-19/channel-123456789-consolidation-alerts/20260619-143012-market-snapshots.csv
-data/recordings/2026-06-19/channel-123456789-consolidation-alerts/20260619-143012-replay-events.jsonl
+data/recordings/2026-06-19/channel-123456789-sentinel-echo-alerts/20260619-143012-alerts.csv
+data/recordings/2026-06-19/channel-123456789-sentinel-echo-alerts/20260619-143012-market-snapshots.csv
+data/recordings/2026-06-19/channel-123456789-sentinel-echo-alerts/20260619-143012-replay-events.jsonl
 ```
 
 Every export row includes:
@@ -117,7 +117,7 @@ The control panel gets a Discord Recorder tab with:
 - Multi-channel editor for channel ID, friendly name, enabled flag, and notes.
 - Optional allowed authors and ignored authors per channel.
 - Message content intent status guidance.
-- Parser preview textbox copied from Consolidation behavior.
+- Parser preview textbox copied from Sentinel Echo behavior.
 - Connection status: stopped, connecting, connected, failed.
 - Last message time, messages recorded count, parsed count, unparsed count, drift-alert count.
 
@@ -135,7 +135,7 @@ The recorder must ignore its own bot messages and only process configured channe
 
 ## Alert Parsing
 
-The first parser should port Consolidation's proven options parser:
+The first parser should port Sentinel Echo's proven options parser:
 
 - Buy/open terms: BTO, buy, bought, entry, entering, long, opening.
 - Sell/exit terms: STC, sell, sold, trim, close, exit, out.
@@ -229,7 +229,7 @@ The replay event stream is chronological JSONL-compatible data:
 {"type":"market_snapshot","timestamp":"2026-06-19T14:30:12Z","contract_key":"SPY|2026-06-19|540|CALL","payload":{}}
 ```
 
-This lets Consolidation or another bot replay exactly what the Engine saw without inheriting any execution behavior from the Engine.
+This lets Sentinel Echo or another bot replay exactly what the Engine saw without inheriting any execution behavior from the Engine.
 
 ## Error Handling
 
@@ -239,7 +239,7 @@ This lets Consolidation or another bot replay exactly what the Engine saw withou
 - Parser failure: message stored with `parse_status = unparsed`.
 - Missing market data: parsed alert stored with `lookup_status = market_price_unavailable`.
 - Duplicate Discord message ID: do not insert a second raw message; update metadata only if useful.
-- Unsafe regex patterns: reject nested quantifier and broad wildcard patterns, matching Consolidation's validation approach.
+- Unsafe regex patterns: reject nested quantifier and broad wildcard patterns, matching Sentinel Echo's validation approach.
 
 ## UI
 
@@ -293,4 +293,4 @@ Token handling rules:
 - Alerts and price snapshots are stored in SQLite and survive restarts.
 - Export files are timestamped and channel-aware.
 - Drift flags show whether alert price differed materially from observed market price.
-- Consolidation or another bot can consume exported/replay data without the Engine making trade decisions.
+- Sentinel Echo or another bot can consume exported/replay data without the Engine making trade decisions.

@@ -1,11 +1,11 @@
-"""Windows packaged entrypoint for Sentinel Simulation Engine."""
+"""Windows packaged entrypoint for Sentinel Archive."""
 from __future__ import annotations
 
 import os
 
 import uvicorn
 
-from simulation_engine.main import app
+from sentinel_archive.main import app
 
 
 if __name__ == "__main__":

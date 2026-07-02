@@ -1,0 +1,108 @@
+{
+  "contract_version": "simulation.alert_parser.golden.v1",
+  "description": "Golden Discord option-alert parser cases for Sentinel-Archive replay readiness.",
+  "cases": [
+    {
+      "name": "standard_bto_call",
+      "message_id": "golden-buy-1",
+      "text": "BTO SPY 500C 6/21 @ 1.25",
+      "expected": {
+        "parse_status": "parsed",
+        "action": "buy",
+        "ticker": "SPY",
+        "expiration": "2026-06-21",
+        "strike": 500.0,
+        "option_type": "CALL",
+        "alert_price": 1.25,
+        "sell_percentage": null,
+        "confidence": "high",
+        "contract_key": "SPY|2026-06-21|500|CALL"
+      }
+    },
+    {
+      "name": "multiline_dollar_put_entry",
+      "message_id": "golden-buy-2",
+      "text": "$SPY\n$744 PUTS\nEXPIRATION 6/22/2026\n$.4 Entry",
+      "expected": {
+        "parse_status": "parsed",
+        "action": "buy",
+        "ticker": "SPY",
+        "expiration": "2026-06-22",
+        "strike": 744.0,
+        "option_type": "PUT",
+        "alert_price": 0.4,
+        "sell_percentage": null,
+        "confidence": "high",
+        "contract_key": "SPY|2026-06-22|744|PUT"
+      }
+    },
+    {
+      "name": "trim_half_position",
+      "message_id": "golden-sell-1",
+      "text": "SELL 50% SPY 500 CALLS 6/21 @ 1.40",
+      "expected": {
+        "parse_status": "parsed",
+        "action": "sell",
+        "ticker": "SPY",
+        "expiration": "2026-06-21",
+        "strike": 500.0,
+        "option_type": "CALL",
+        "alert_price": 1.4,
+        "sell_percentage": 50.0,
+        "confidence": "high",
+        "contract_key": "SPY|2026-06-21|500|CALL"
+      }
+    },
+    {
+      "name": "close_contract_without_price",
+      "message_id": "golden-close-1",
+      "text": "CLOSE SPY 500C 6/21",
+      "expected": {
+        "parse_status": "parsed",
+        "action": "close",
+        "ticker": "SPY",
+        "expiration": "2026-06-21",
+        "strike": 500.0,
+        "option_type": "CALL",
+        "alert_price": null,
+        "sell_percentage": 100.0,
+        "confidence": "medium",
+        "contract_key": "SPY|2026-06-21|500|CALL"
+      }
+    },
+    {
+      "name": "average_down_contract_without_price",
+      "message_id": "golden-average-down-1",
+      "text": "AVG DOWN SPY 500C 6/21",
+      "expected": {
+        "parse_status": "parsed",
+        "action": "average_down",
+        "ticker": "SPY",
+        "expiration": "2026-06-21",
+        "strike": 500.0,
+        "option_type": "CALL",
+        "alert_price": null,
+        "sell_percentage": null,
+        "confidence": "medium",
+        "contract_key": "SPY|2026-06-21|500|CALL"
+      }
+    },
+    {
+      "name": "watchlist_message_remains_unparsed",
+      "message_id": "golden-unparsed-1",
+      "text": "watching SPY for a setup",
+      "expected": {
+        "parse_status": "unparsed",
+        "action": null,
+        "ticker": null,
+        "expiration": null,
+        "strike": null,
+        "option_type": null,
+        "alert_price": null,
+        "sell_percentage": null,
+        "confidence": "none",
+        "contract_key": null
+      }
+    }
+  ]
+}
